@@ -1,0 +1,11 @@
+openai
+langgraph
+chromadb
+sentence-transformers
+rank-bm25
+numpy
+tqdm
+requests
+langchain-text-splitters
+pandas
+openpyxl

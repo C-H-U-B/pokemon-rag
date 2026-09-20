@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Environnements / secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Index RAG
+chroma_db/
+
+# Corpus Poképédia généré
+corpus/raw/
+corpus/cleaned/
+
+# PokéAPI téléchargé / généré
+corpus/pokeapi/raw/
+corpus/pokeapi/*.db
+
+# Base unifiée générée
+corpus/*.db
+
+# Logs / temporaires
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
