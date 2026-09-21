@@ -9,9 +9,11 @@ import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-POKEAPI_DB = Path("pokemon/corpus/pokeapi/pokeapi.db")
-SPREADSHEET = Path("pokemon/corpus/pokedex_particularites.xlsx")
-OUTPUT_DB = Path("pokemon/corpus/pokemon.db")
+from pokemon_rag.config import DB_PATH, POKEAPI_DB_PATH, SPREADSHEET_PATH
+
+POKEAPI_DB = POKEAPI_DB_PATH
+SPREADSHEET = SPREADSHEET_PATH
+OUTPUT_DB = DB_PATH
 
 SHEETS = {
     "Pokédex FR": "custom_pokedex_fr",

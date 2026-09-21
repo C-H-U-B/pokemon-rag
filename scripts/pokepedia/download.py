@@ -12,7 +12,9 @@ import requests
 
 
 API_URL = "https://www.pokepedia.fr/api.php"
-OUTPUT_DIR = Path("pokemon/corpus/raw")
+from pokemon_rag.config import POKEPEDIA_RAW_DIR
+
+OUTPUT_DIR = POKEPEDIA_RAW_DIR
 
 REQUEST_DELAY = 1.0
 TIMEOUT = 30

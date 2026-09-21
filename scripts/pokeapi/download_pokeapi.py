@@ -8,7 +8,9 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-RAW_DIR = Path("pokemon/corpus/pokeapi/raw")
+from pokemon_rag.config import POKEAPI_RAW_DIR
+
+RAW_DIR = POKEAPI_RAW_DIR
 BASE_URL = "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv"
 
 # Premier lot : gameplay structuré absent du tableur.

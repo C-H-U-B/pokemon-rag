@@ -8,8 +8,10 @@ from pathlib import Path
 # CONFIGURATION
 # ============================================================
 
-RAW_DIR = Path("pokemon/corpus/raw")
-OUTPUT_DIR = Path("pokemon/corpus/cleaned")
+from pokemon_rag.config import POKEPEDIA_CLEANED_DIR, POKEPEDIA_RAW_DIR
+
+RAW_DIR = POKEPEDIA_RAW_DIR
+OUTPUT_DIR = POKEPEDIA_CLEANED_DIR
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

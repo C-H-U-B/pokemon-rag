@@ -9,8 +9,10 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-RAW_DIR = Path("pokemon/corpus/pokeapi/raw")
-DB_PATH = Path("pokemon/corpus/pokeapi/pokeapi.db")
+from pokemon_rag.config import POKEAPI_DB_PATH, POKEAPI_RAW_DIR
+
+RAW_DIR = POKEAPI_RAW_DIR
+DB_PATH = POKEAPI_DB_PATH
 INSERT_BATCH_SIZE = 20_000
 
 CSV_FILES = [
