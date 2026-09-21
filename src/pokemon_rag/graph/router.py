@@ -259,8 +259,122 @@ def _validate_router_output(
     }
 
 
+
+# =============================================================================
+# FAST ROUTER DÉTERMINISTE
+# =============================================================================
+
+# Le Fast Router ne prend une décision que pour des familles STRUCTURED
+# explicites. Tout cas ambigu reste traité par le routeur Qwen existant.
+_FAST_STRUCTURED_PATTERNS = [
+    re.compile(r"\b(?:ct|cs|machine|machines)\b", re.IGNORECASE),
+    re.compile(r"\b(?:niveau|level)\s*\d+\b", re.IGNORECASE),
+    re.compile(r"\b(?:apres|avant|au[- ]dessus|en[- ]dessous)\b.*\b(?:niveau|level)\b", re.IGNORECASE),
+    re.compile(r"\b(?:evolue|evoluer|evolution|evolutions)\b", re.IGNORECASE),
+    re.compile(r"\b(?:apprendre|apprend|apprise|apprises|appris)\b", re.IGNORECASE),
+    re.compile(r"\b(?:statistique|statistiques|stats|type|types|talent|talents)\b", re.IGNORECASE),
+]
+
+_FAST_DOCUMENTARY_PATTERNS = [
+    re.compile(r"^\s*pourquoi\b", re.IGNORECASE),
+    re.compile(r"\b(?:explique|expliquer|explication|histoire|biologie)\b", re.IGNORECASE),
+]
+
+def _extract_unique_pokemon_from_question(question: str) -> str | None:
+    """Détecte un Pokémon explicite à partir des noms présents dans pokemon.db.
+
+    Retourne un nom canonique seulement si une seule espèce est reconnue.
+    Cette détection sert à sécuriser le Fast Router ; elle ne remplace pas le parser.
+    """
+    normalized_question = f" {normalize_text(question)} "
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT name_fr, name_en
+            FROM custom_pokedex
+            WHERE name_fr IS NOT NULL OR name_en IS NOT NULL
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+    matches: list[tuple[str, str]] = []
+    for row in rows:
+        canonical = str(row["name_fr"] or row["name_en"])
+        for candidate in (row["name_fr"], row["name_en"]):
+            if not candidate:
+                continue
+            token = normalize_text(candidate)
+            if token and f" {token} " in normalized_question:
+                matches.append((canonical, token))
+                break
+
+    # Une forme peut être présente comme entrée distincte dans custom_pokedex
+    # tout en contenant le nom de l'espèce de base, par exemple :
+    # "Tutafeh" + "Tutafeh de Galar".
+    #
+    # Pour le Fast Router, on veut uniquement identifier l'espèce. Le parser
+    # structuré reste responsable de l'interprétation de la forme.
+    unique_matches = list(dict.fromkeys(matches))
+    if len(unique_matches) == 1:
+        return unique_matches[0][0]
+
+    if unique_matches:
+        shortest_canonical, shortest_token = min(
+            unique_matches,
+            key=lambda item: len(item[1]),
+        )
+        if all(
+            token == shortest_token
+            or token.startswith(shortest_token + " ")
+            for _, token in unique_matches
+        ):
+            return shortest_canonical
+
+    return None
+
+def _fast_route_question(question: str) -> dict[str, Any] | None:
+    """Route les cas STRUCTURED évidents ; sinon laisse Qwen décider."""
+    normalized = normalize_text(question)
+
+    # Les demandes documentaires/explicatives restent au routeur sémantique.
+    if any(pattern.search(normalized) for pattern in _FAST_DOCUMENTARY_PATTERNS):
+        return None
+
+    # Une coordination explicite peut cacher plusieurs besoins indépendants.
+    # On laisse alors Qwen appliquer la règle single_question.
+    if re.search(r"\b(?:et|ainsi que)\b", normalized):
+        return None
+
+    if not any(pattern.search(normalized) for pattern in _FAST_STRUCTURED_PATTERNS):
+        return None
+
+    pokemon = _extract_unique_pokemon_from_question(question)
+    if pokemon is None:
+        return None
+
+    return {
+        "route": "STRUCTURED",
+        "intent": "STRUCTURED_QUERY",
+        "pokemon": pokemon,
+        "pokemon_validated": True,
+        "single_question": True,
+        "information_need": question.strip(),
+        "reason": "Fast Router : requête structurée explicite reconnue déterministement.",
+        "router_error": None,
+        "router_mode": "FAST",
+    }
+
 def route_question(question: str) -> dict[str, Any]:
     start = time.perf_counter()
+
+    fast_result = _fast_route_question(question)
+    if fast_result is not None:
+        fast_result["router_time"] = time.perf_counter() - start
+        return fast_result
 
     try:
         response = llm_client.chat.completions.create(
@@ -277,6 +391,7 @@ def route_question(question: str) -> dict[str, Any]:
         result = _validate_router_output(raw, question)
 
         result["router_error"] = None
+        result["router_mode"] = "LLM"
         result["router_time"] = time.perf_counter() - start
         return result
 
@@ -290,39 +405,6 @@ def route_question(question: str) -> dict[str, Any]:
             "information_need": question.strip(),
             "reason": "Fallback déterministe après échec du routeur.",
             "router_error": f"{type(exc).__name__}: {exc}",
+            "router_mode": "FALLBACK",
             "router_time": time.perf_counter() - start,
         }
-
-
-if __name__ == "__main__":
-    questions = [
-        "Qu'est-ce que tu peux me dire sur Lovdisc ?",
-        "Qu'est-ce qui rend Lovdisc unique ?",
-        "Quel Pokémon a la meilleure Vitesse ?",
-        "Pourquoi Darumacho de Galar peut-il devenir de type Glace/Feu ?",
-        "Quelle capacité Capumain apprend-il au niveau 15 ?",
-    ]
-
-    suite_start = time.perf_counter()
-
-    print("=" * 90)
-    print("TEST MANUEL DU ROUTER POKÉMON V2")
-    print("=" * 90)
-
-    for i, question in enumerate(questions, 1):
-        print(f"\n[{i}/{len(questions)}] {question}")
-        result = route_question(question)
-
-        print(f"Route              : {result['route']}")
-        print(f"Intent             : {result['intent']}")
-        print(f"Pokémon            : {result['pokemon']}")
-        print(f"Pokémon validé     : {result['pokemon_validated']}")
-        print(f"Raison             : {result['reason']}")
-        print(f"Temps router       : {result['router_time']:.3f} s")
-
-        if result["router_error"]:
-            print(f"ERREUR             : {result['router_error']}")
-
-    print("\n" + "=" * 90)
-    print(f"TEMPS TOTAL : {time.perf_counter() - suite_start:.3f} s")
-    print("=" * 90)
