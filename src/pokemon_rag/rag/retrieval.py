@@ -876,7 +876,8 @@ def print_results(question: str, results: list[dict]) -> None:
             for item in selector_candidates:
                 print(
                     f"  contenu={item['content_score']:.4f} | "
-                    f"chemin={item['path_score']:.4f} | "
+                    f"focus={item['focus_score']:.4f} | "
+                    f"structure={item['structural_score']:.4f} | "
                     f"{item['section_path']} "
                     f"(rang initial {item.get('original_reranker_rank', '?')})"
                 )

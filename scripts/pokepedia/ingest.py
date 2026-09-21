@@ -15,8 +15,10 @@ from tqdm import tqdm
 # CONFIGURATION
 # =============================================================================
 
-CLEANED_DIR = Path("pokemon/corpus/cleaned")
-CHROMA_PATH = "chroma_db"
+from pokemon_rag.config import CHROMA_PATH, POKEPEDIA_CLEANED_DIR
+
+CLEANED_DIR = POKEPEDIA_CLEANED_DIR
+
 COLLECTION_NAME = "pokemon_documents"
 
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -147,16 +149,16 @@ def split_markdown_sections(text: str) -> list[dict]:
     return sections
 
 
-def build_indexed_chunk(
+def build_search_document(
     pokemon_name: str,
     section_path: list[str],
     body: str,
 ) -> str:
     """
-    Ajoute un petit en-tête sémantique au chunk indexé.
+    Construit la représentation enrichie utilisée pour la recherche.
 
-    Important : cet en-tête fait partie du texte stocké dans Chroma et sera donc
-    visible par Vector, BM25, le reranker et le LLM.
+    Le corps original reste stocké séparément dans Chroma pour être restitué
+    tel quel au LLM. Cette représentation sert uniquement au calcul d'embedding.
     """
     body = body.strip()
     if not INJECT_CONTEXT_HEADER:
@@ -164,7 +166,10 @@ def build_indexed_chunk(
 
     lines = [f"Pokémon : {pokemon_name}"]
     if section_path:
-        lines.append(f"Section : {' > '.join(section_path)}")
+        lines.append(f"Section principale : {section_path[0]}")
+        if len(section_path) > 1:
+            lines.append(f"Sous-section : {section_path[-1]}")
+        lines.append(f"Chemin : {' > '.join(section_path)}")
     lines.append("")
     lines.append(body)
     return "\n".join(lines).strip()
@@ -189,11 +194,11 @@ def split_section_body(
 
     # L'en-tête consomme une partie de la taille cible : on split le corps avec
     # une marge pour éviter des chunks beaucoup plus grands que CHUNK_SIZE.
-    header = build_indexed_chunk(pokemon_name, section_path, "")
+    header = build_search_document(pokemon_name, section_path, "")
     available_size = max(350, CHUNK_SIZE - len(header) - 2)
 
     if len(body) <= available_size:
-        return [build_indexed_chunk(pokemon_name, section_path, body)]
+        return [body]
 
     local_splitter = RecursiveCharacterTextSplitter(
         chunk_size=available_size,
@@ -203,13 +208,13 @@ def split_section_body(
     )
 
     return [
-        build_indexed_chunk(pokemon_name, section_path, piece)
+        piece.strip()
         for piece in local_splitter.split_text(body)
         if piece.strip()
     ]
 
 
-def load_and_chunk_documents(files: list[Path]) -> tuple[list[str], list[dict], list[str], dict]:
+def load_and_chunk_documents(files: list[Path]) -> tuple[list[str], list[str], list[dict], list[str], dict]:
     base_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
@@ -218,6 +223,7 @@ def load_and_chunk_documents(files: list[Path]) -> tuple[list[str], list[dict], 
     )
 
     documents: list[str] = []
+    search_documents: list[str] = []
     metadatas: list[dict] = []
     ids: list[str] = []
 
@@ -293,6 +299,9 @@ def load_and_chunk_documents(files: list[Path]) -> tuple[list[str], list[dict], 
                     metadata["source_url"] = source_url
 
                 documents.append(chunk)
+                search_documents.append(
+                    build_search_document(pokemon_name, section_path_list, chunk)
+                )
                 metadatas.append(metadata)
                 ids.append(make_chunk_id(path.name, section_path, file_chunk_number))
 
@@ -308,7 +317,7 @@ def load_and_chunk_documents(files: list[Path]) -> tuple[list[str], list[dict], 
 
         progress.set_postfix(pokemon=pokemon_name[:18], chunks_total=len(documents))
 
-    return documents, metadatas, ids, stats
+    return documents, search_documents, metadatas, ids, stats
 
 
 # =============================================================================
@@ -319,7 +328,7 @@ def main() -> None:
     total_start = time.perf_counter()
 
     print("=" * 88)
-    print("INGESTION RAG POKÉMON V2 — CHUNKING MARKDOWN STRUCTURÉ")
+    print("INGESTION RAG POKÉMON — CHUNKING MARKDOWN STRUCTURÉ")
     print("=" * 88)
     print(f"Corpus             : {CLEANED_DIR}")
     print(f"Chroma             : {CHROMA_PATH}")
@@ -338,13 +347,15 @@ def main() -> None:
 
     # 1. Lecture + chunking
     chunk_start = time.perf_counter()
-    documents, metadatas, ids, chunk_stats = load_and_chunk_documents(files)
+    documents, search_documents, metadatas, ids, chunk_stats = load_and_chunk_documents(files)
     chunk_time = time.perf_counter() - chunk_start
 
     if not documents:
         raise RuntimeError("Aucun chunk généré.")
-    if len(documents) != len(metadatas) or len(documents) != len(ids):
-        raise RuntimeError("Documents / métadonnées / IDs désynchronisés.")
+    if not (len(documents) == len(search_documents) == len(metadatas) == len(ids)):
+        raise RuntimeError(
+            "Documents source / documents de recherche / métadonnées / IDs désynchronisés."
+        )
     if len(ids) != len(set(ids)):
         raise RuntimeError("IDs Chroma dupliqués détectés.")
 
@@ -369,7 +380,7 @@ def main() -> None:
     # 3. Embeddings — barre de progression native SentenceTransformers
     embedding_start = time.perf_counter()
     embeddings = model.encode(
-        documents,
+        search_documents,
         batch_size=EMBEDDING_BATCH_SIZE,
         show_progress_bar=True,
         normalize_embeddings=True,
@@ -421,7 +432,7 @@ def main() -> None:
 
     print()
     print("=" * 88)
-    print("RAPPORT GLOBAL — INGESTION POKÉMON V2")
+    print("RAPPORT GLOBAL — INGESTION POKÉMON")
     print("=" * 88)
     print(f"Fichiers lus                 : {len(files):,}")
     print(f"Sections détectées           : {chunk_stats['sections']:,}")
@@ -445,8 +456,8 @@ def main() -> None:
         )
 
     print()
-    print("✓ Ingestion V2 terminée et vérifiée.")
-    print("✓ Les chunks conservent maintenant le chemin de section Markdown.")
+    print("✓ Ingestion terminée et vérifiée.")
+    print("✓ Chroma stocke le texte source et recherche avec une représentation enrichie.")
 
 
 if __name__ == "__main__":
