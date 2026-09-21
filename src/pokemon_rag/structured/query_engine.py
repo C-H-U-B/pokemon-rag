@@ -109,8 +109,245 @@ def _extract_json(text: str) -> dict[str, Any]:
     return result
 
 
+
+def _fast_db_names(
+    conn: sqlite3.Connection,
+    base_table: str,
+    names_table: str,
+    names_id_column: str,
+) -> list[tuple[str, str]]:
+    """Retourne les noms FR/EN/identifiants disponibles dans pokemon.db."""
+    fr_id, en_id = _language_ids(conn)
+    rows = conn.execute(
+        f"""
+        SELECT DISTINCT base.identifier, fr.name AS name_fr, en.name AS name_en
+        FROM "{base_table}" base
+        LEFT JOIN "{names_table}" fr
+          ON fr."{names_id_column}" = base.id AND fr.local_language_id = ?
+        LEFT JOIN "{names_table}" en
+          ON en."{names_id_column}" = base.id AND en.local_language_id = ?
+        """,
+        (fr_id, en_id),
+    ).fetchall()
+
+    values: list[tuple[str, str]] = []
+    for row in rows:
+        display = row["name_fr"] or row["name_en"] or row["identifier"]
+        for candidate in (row["name_fr"], row["name_en"], row["identifier"]):
+            if candidate:
+                values.append((str(display), _normalize(str(candidate))))
+    return values
+
+
+def _fast_find_unique(
+    normalized_question: str,
+    candidates: list[tuple[str, str]],
+) -> str | None:
+    padded = f"-{normalized_question}-"
+    matches = [
+        (display, token)
+        for display, token in candidates
+        if token and f"-{token}-" in padded
+    ]
+    unique = list(dict.fromkeys(matches))
+    if len(unique) == 1:
+        return unique[0][0]
+    return None
+
+
+def _fast_species(question: str) -> str | None:
+    conn = _connect()
+    try:
+        candidates = _fast_db_names(
+            conn, "pokemon_species", "pokemon_species_names", "pokemon_species_id"
+        )
+    finally:
+        conn.close()
+    return _fast_find_unique(_normalize(question), candidates)
+
+
+def _fast_move(question: str) -> str | None:
+    conn = _connect()
+    try:
+        candidates = _fast_db_names(conn, "moves", "move_names", "move_id")
+    finally:
+        conn.close()
+    return _fast_find_unique(_normalize(question), candidates)
+
+
+_REGION_FORMS = {
+    "alola": "alola",
+    "galar": "galar",
+    "hisui": "hisui",
+    "paldea": "paldea",
+}
+
+
+def _fast_form(question: str) -> str | None:
+    normalized = _normalize(question)
+    matches = [
+        form for token, form in _REGION_FORMS.items()
+        if re.search(rf"(?:^|-){re.escape(token)}(?:-|$)", normalized)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+_VERSION_ALIASES = {
+    "rouge-et-bleu": "red-blue",
+    "red-and-blue": "red-blue",
+    "diamant-et-perle": "diamond-pearl",
+    "diamond-and-pearl": "diamond-pearl",
+    "soleil-et-lune": "sun-moon",
+    "sun-and-moon": "sun-moon",
+    "epee-et-bouclier": "sword-shield",
+    "sword-and-shield": "sword-shield",
+    "ecarlate-et-violet": "scarlet-violet",
+    "scarlet-and-violet": "scarlet-violet",
+    "ev": "scarlet-violet",
+}
+
+
+def _fast_version_group(question: str) -> tuple[str | None, bool]:
+    normalized = _normalize(question)
+    matches = {
+        value for alias, value in _VERSION_ALIASES.items()
+        if f"-{alias}-" in f"-{normalized}-"
+    }
+    if len(matches) > 1:
+        return None, True
+    if len(matches) == 1:
+        return next(iter(matches)), False
+
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT identifier FROM version_groups WHERE identifier IS NOT NULL"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    direct = {
+        str(row["identifier"])
+        for row in rows
+        if f"-{_normalize(row['identifier'])}-" in f"-{normalized}-"
+    }
+    if len(direct) > 1:
+        return None, True
+    return (next(iter(direct)), False) if direct else (None, False)
+
+
+def _fast_level_bounds(question: str) -> tuple[int | None, int | None] | None:
+    normalized = _normalize(question)
+
+    match = re.search(
+        r"(?:apres|after)-+(?:le-+)?(?:niveau|level)-+(\d+)", normalized
+    )
+    if match:
+        return int(match.group(1)) + 1, None
+
+    match = re.search(
+        r"(?:a-+partir-+du|a-+partir-+de|from)-+(?:niveau|level)-+(\d+)",
+        normalized,
+    )
+    if match:
+        return int(match.group(1)), None
+
+    match = re.search(
+        r"(?:avant|before)-+(?:le-+)?(?:niveau|level)-+(\d+)", normalized
+    )
+    if match:
+        return None, max(0, int(match.group(1)) - 1)
+
+    match = re.search(r"(?:au|a|at)-+(?:niveau|level)-+(\d+)", normalized)
+    if match:
+        level = int(match.group(1))
+        return level, level
+
+    return None
+
+
+def _fast_parse_query(question: str) -> dict[str, Any] | None:
+    """Construit un plan uniquement pour les formulations non ambiguës."""
+    normalized = _normalize(question)
+    pokemon = _fast_species(question)
+    if pokemon is None:
+        return None
+
+    form = _fast_form(question)
+    version_group, ambiguous_version = _fast_version_group(question)
+    if ambiguous_version:
+        return None
+
+    evolution = bool(re.search(
+        r"(?:^|-)(?:evolue|evoluent|evoluer|evolution|evolutions)(?:-|$)",
+        normalized,
+    ))
+    machine = bool(re.search(
+        r"(?:^|-)(?:ct|cs|machine|machines)(?:-|$)", normalized
+    ))
+    level_bounds = _fast_level_bounds(question)
+    level_request = level_bounds is not None
+    learning = bool(re.search(
+        r"(?:^|-)(?:apprendre|apprend|apprennent|appris|apprise|apprises)(?:-|$)",
+        normalized,
+    ))
+
+    if sum((evolution, machine, level_request)) > 1:
+        return None
+
+    if evolution:
+        return validate_plan({
+            "operation": "get_evolutions",
+            "pokemon": pokemon,
+            "form": form,
+            "version_group": version_group,
+        })
+
+    if machine:
+        return validate_plan({
+            "operation": "get_machine_moves",
+            "pokemon": pokemon,
+            "form": form,
+            "version_group": version_group,
+        })
+
+    if level_request:
+        min_level, max_level = level_bounds
+        return validate_plan({
+            "operation": "get_level_up_moves",
+            "pokemon": pokemon,
+            "form": form,
+            "version_group": version_group,
+            "min_level": min_level,
+            "max_level": max_level,
+        })
+
+    if learning:
+        move = _fast_move(question)
+        if move is not None:
+            return validate_plan({
+                "operation": "get_move_learning_methods",
+                "pokemon": pokemon,
+                "form": form,
+                "move": move,
+                "version_group": version_group,
+            })
+
+    return None
+
+
 def parse_query(question: str) -> dict[str, Any]:
     start = time.perf_counter()
+
+    fast_plan = _fast_parse_query(question)
+    if fast_plan is not None:
+        return {
+            "plan": fast_plan,
+            "raw_text": None,
+            "parse_time": time.perf_counter() - start,
+            "parser_mode": "FAST",
+        }
+
     response = llm_client.chat.completions.create(
         model=QUERY_MODEL,
         temperature=0,
@@ -125,6 +362,7 @@ def parse_query(question: str) -> dict[str, Any]:
         "plan": validate_plan(plan),
         "raw_text": raw,
         "parse_time": time.perf_counter() - start,
+        "parser_mode": "LLM",
     }
 
 
@@ -849,6 +1087,7 @@ def query_structured_data(question: str) -> dict[str, Any]:
         result["plan"] = parsed["plan"]
         result["raw_plan"] = parsed["raw_text"]
         result["parse_time"] = parsed["parse_time"]
+        result["parser_mode"] = parsed["parser_mode"]
         result["total_time"] = time.perf_counter() - total_start
         result["error"] = None
         return result
@@ -857,6 +1096,7 @@ def query_structured_data(question: str) -> dict[str, Any]:
             "plan": None,
             "count": 0,
             "parse_time": None,
+            "parser_mode": None,
             "execution_time": None,
             "total_time": time.perf_counter() - total_start,
             "error": f"{type(exc).__name__}: {exc}",

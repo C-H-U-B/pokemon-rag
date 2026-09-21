@@ -25,6 +25,9 @@ data/cleaned/
 data/pokeapi/raw/
 data/pokeapi/*.db
 
+# Données Poképédia locales / générées
+data/pokepedia/
+
 # Base unifiée générée
 data/*.db
 
