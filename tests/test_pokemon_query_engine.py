@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pokemon_rag.structured.query_engine import get_evolutions
+from pokemon_rag.structured.query_engine import get_evolutions, parse_query
 
 
 PASSED = 0
@@ -27,6 +27,54 @@ def check(condition: bool, message: str) -> None:
         FAILED += 1
         print(f"  ✗ {message}")
 
+def test_parse_regional_forms() -> None:
+    tutafeh = parse_query("Comment Tutafeh de Galar évolue-t-il ?")["plan"]
+
+    check(tutafeh["operation"] == "get_evolutions", "Tutafeh : opération évolution")
+    check(tutafeh["pokemon"] == "Tutafeh", "Tutafeh : Pokémon correctement identifié")
+    check(tutafeh["form"] == "galar", "Tutafeh : Galar est identifié comme forme")
+    check(
+        tutafeh["version_group"] is None,
+        "Tutafeh : Galar n'est pas utilisé comme version_group",
+    )
+
+    rattata = parse_query("Comment Rattata d'Alola évolue-t-il ?")["plan"]
+
+    check(rattata["operation"] == "get_evolutions", "Rattata : opération évolution")
+    check(rattata["pokemon"] == "Rattata", "Rattata : Pokémon correctement identifié")
+    check(rattata["form"] == "alola", "Rattata : Alola est identifié comme forme")
+    check(
+        rattata["version_group"] is None,
+        "Rattata : Alola n'est pas utilisé comme version_group",
+    )
+
+
+def test_parse_form_and_version() -> None:
+    plan = parse_query(
+        "Comment Tutafeh de Galar évolue-t-il dans Épée et Bouclier ?"
+    )["plan"]
+
+    check(plan["operation"] == "get_evolutions", "Forme + version : opération évolution")
+    check(plan["pokemon"] == "Tutafeh", "Forme + version : Pokémon correctement identifié")
+    check(plan["form"] == "galar", "Forme + version : forme Galar conservée")
+    check(
+        plan["version_group"] == "sword-shield",
+        "Forme + version : Épée/Bouclier devient sword-shield",
+    )
+
+
+def test_parse_version_without_form() -> None:
+    plan = parse_query(
+        "Comment Pikachu évolue-t-il dans Rouge et Bleu ?"
+    )["plan"]
+
+    check(plan["operation"] == "get_evolutions", "Version seule : opération évolution")
+    check(plan["pokemon"] == "Pikachu", "Version seule : Pokémon correctement identifié")
+    check(plan["form"] is None, "Version seule : aucune forme inventée")
+    check(
+        plan["version_group"] == "red-blue",
+        "Version seule : Rouge/Bleu devient red-blue",
+    )
 
 def find_evolution(result: dict, target_identifier: str, version_group: str | None = None):
     for evolution in result["evolutions"]:
@@ -250,6 +298,9 @@ TESTS: list[tuple[str, Callable[[], None]]] = [
     ("Évoli / historique des méthodes", test_evoli_history),
     ("Filtrage par version", test_version_filter),
     ("Entrées invalides", test_invalid_inputs),
+    ("Parser / formes régionales", test_parse_regional_forms),
+    ("Parser / forme + version", test_parse_form_and_version),
+    ("Parser / version sans forme", test_parse_version_without_form),
 ]
 
 

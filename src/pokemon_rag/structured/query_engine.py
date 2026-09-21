@@ -34,6 +34,11 @@ Opérations disponibles :
 1. get_evolutions
 - Évolution d'un Pokémon.
 - Clés : operation, pokemon, form, version_group
+- Ne confonds jamais une forme ou une région avec un version_group.
+- Si un nom de région qualifie directement le Pokémon (ex. "de Galar",
+  "d'Alola", "de Hisui", "de Paldea"), il décrit la forme du Pokémon :
+  utilise form avec l'identifiant correspondant et laisse version_group à null,
+  sauf si un jeu ou groupe de versions est explicitement demandé séparément.
 
 2. get_move_learning_methods
 - Demande comment/par quelles méthodes un Pokémon apprend UNE capacité.
