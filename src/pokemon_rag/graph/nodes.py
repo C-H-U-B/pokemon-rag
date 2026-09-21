@@ -3,16 +3,17 @@ import sqlite3
 import time
 from pathlib import Path
 from openai import OpenAI
-from grounding_checker import check_grounding
-from context_sufficiency import check_context_sufficiency
-from rag_pokemon import retrieve, retrieve_retry_context
-from pokemon_router import route_question
-from pokemon_query_engine import query_structured_data
+from pokemon_rag.rag.grounding import check_grounding
+from pokemon_rag.rag.sufficiency import check_context_sufficiency
+from pokemon_rag.rag.retrieval import retrieve, retrieve_retry_context
+from pokemon_rag.graph.router import route_question
+from pokemon_rag.structured.query_engine import query_structured_data
+from pokemon_rag.config import DB_PATH
 
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
 MAIN_MODEL = "mn-chinofun-12b-4-heretic-i1"
 TOP_K = 5
-DB_PATH = Path("pokemon/corpus/pokemon.db")
+
 
 llm_client = OpenAI(base_url=LM_STUDIO_BASE_URL, api_key="lm-studio")
 

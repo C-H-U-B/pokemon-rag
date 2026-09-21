@@ -14,8 +14,8 @@ from tqdm import tqdm
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+from pokemon_rag.config import CHROMA_PATH
 
-CHROMA_PATH = "chroma_db"
 COLLECTION_NAME = "pokemon_documents"
 
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -56,7 +56,7 @@ print("=" * 84)
 
 startup_start = time.perf_counter()
 
-client = chromadb.PersistentClient(path=CHROMA_PATH)
+client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 collection = client.get_collection(COLLECTION_NAME)
 
 print(f"Collection Chroma : {COLLECTION_NAME}")
@@ -986,4 +986,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+
     main()

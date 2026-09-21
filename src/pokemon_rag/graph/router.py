@@ -5,16 +5,15 @@ import re
 import sqlite3
 import time
 import unicodedata
-from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
-
+from pokemon_rag.config import DB_PATH
 
 
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
 ROUTER_MODEL = "qwen/qwen3-vl-8b"
-DB_PATH = Path("pokemon/corpus/pokemon.db")
+
 
 VALID_ROUTES = {"RAG", "STRUCTURED", "HYBRID"}
 VALID_INTENTS = {"PROFILE", "STRUCTURED_QUERY", "DOCUMENT_SEARCH"}

@@ -5,13 +5,12 @@ import re
 import sqlite3
 import time
 import unicodedata
-from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
 
 
-DB_PATH = Path("pokemon/corpus/pokemon.db")
+from pokemon_rag.config import DB_PATH
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
 QUERY_MODEL = "qwen/qwen3-vl-8b"
 

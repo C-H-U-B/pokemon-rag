@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pokemon.pokemon_query_engine import get_evolutions
+from pokemon_rag.structured.query_engine import get_evolutions
 
 
 PASSED = 0

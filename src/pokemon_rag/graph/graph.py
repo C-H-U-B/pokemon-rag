@@ -5,7 +5,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from pokemon_nodes import (
+from pokemon_rag.graph.nodes import (
     build_context,
     build_hybrid_context,
     call_main_llm,

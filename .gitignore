@@ -1,6 +1,8 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
 
 # Environnements / secrets
 .venv/
@@ -16,15 +18,15 @@ env/
 chroma_db/
 
 # Corpus Poképédia généré
-corpus/raw/
-corpus/cleaned/
+data/raw/
+data/cleaned/
 
 # PokéAPI téléchargé / généré
-corpus/pokeapi/raw/
-corpus/pokeapi/*.db
+data/pokeapi/raw/
+data/pokeapi/*.db
 
 # Base unifiée générée
-corpus/*.db
+data/*.db
 
 # Logs / temporaires
 *.log

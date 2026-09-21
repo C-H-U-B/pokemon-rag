@@ -3,19 +3,15 @@ from __future__ import annotations
 import sqlite3
 import sys
 import time
-from pathlib import Path
+from pokemon_rag.config import DB_PATH
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from pokemon.pokemon_query_engine import (
+from pokemon_rag.structured.query_engine import (
     get_level_up_moves,
     get_machine_moves,
     get_move_learning_methods,
 )
 
-DB_PATH = PROJECT_ROOT / "pokemon" / "corpus" / "pokemon.db"
+
 
 PASSED = 0
 FAILED = 0
