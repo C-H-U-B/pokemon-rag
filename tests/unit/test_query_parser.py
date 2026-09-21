@@ -53,6 +53,15 @@ from pokemon_rag.structured.query_engine import _fast_parse_query, parse_query
             {"form": None, "version_group": "red-blue"},
         ),
     ],
+    ids=[
+        "move-learning",
+        "ct-with-version",
+        "level-after",
+        "galar-form",
+        "alola-form",
+        "galar-form-with-version",
+        "old-version",
+    ],
 )
 def test_fast_parser_structured(question, operation, pokemon, expected):
     plan = _fast_parse_query(question)
@@ -152,3 +161,100 @@ def test_parse_query_keeps_llm_fallback():
     mocked.assert_called_once()
     assert result["parser_mode"] == "LLM"
     assert result["plan"]["operation"] == "get_evolutions"
+
+
+@pytest.mark.parametrize(
+    ("question", "operation", "pokemon"),
+    [
+        (
+            "comment pikachu évolue-t-il ?",
+            "get_evolutions",
+            "Pikachu",
+        ),
+        (
+            "COMMENT PIKACHU ÉVOLUE-T-IL ?",
+            "get_evolutions",
+            "Pikachu",
+        ),
+        (
+            "Comment Pikachu evolue-t-il ?",
+            "get_evolutions",
+            "Pikachu",
+        ),
+        (
+            "Quelles CT Pikachu apprend-il dans EV ?",
+            "get_machine_moves",
+            "Pikachu",
+        ),
+        (
+            "quelles ct pikachu apprend il dans ev",
+            "get_machine_moves",
+            "Pikachu",
+        ),
+        (
+            "Quelles capacités Roitiflam apprend-il après le niveau 40 ?",
+            "get_level_up_moves",
+            "Roitiflam",
+        ),
+        (
+            "Comment Rattata d'Alola évolue-t-il ?",
+            "get_evolutions",
+            "Rattata",
+        ),
+    ],
+    ids=[
+        "lowercase",
+        "uppercase",
+        "without-accents",
+        "ct-standard",
+        "ct-without-punctuation",
+        "level-filter",
+        "regional-form",
+    ],
+)
+def test_fast_parser_is_robust_to_common_formulations(
+    question: str,
+    operation: str,
+    pokemon: str,
+) -> None:
+    plan = _fast_parse_query(question)
+
+    assert plan is not None
+    assert plan["operation"] == operation
+    assert plan["pokemon"] == pokemon
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        # Aucun Pokémon explicite
+        "Comment apprendre Électacle ?",
+
+        # Plusieurs Pokémon
+        "Comment Pikachu et Raichu évoluent-ils ?",
+
+        # Question documentaire
+        "Pourquoi les joues de Pikachu produisent-elles de l'électricité ?",
+
+        # Question générale / ambiguë
+        "Parle-moi de Pikachu.",
+
+        # Comparaison
+        "Pikachu est-il plus rapide que Raichu ?",
+
+        # Deux besoins structurés différents
+        "Comment Pikachu évolue-t-il et quelles CT apprend-il ?",
+    ],
+    ids=[
+        "missing-pokemon",
+        "multiple-pokemon",
+        "documentary-question",
+        "generic-question",
+        "comparison",
+        "multiple-intents",
+    ],
+)
+def test_fast_parser_defers_unsafe_or_unsupported_questions(
+    question: str,
+) -> None:
+    assert _fast_parse_query(question) is None

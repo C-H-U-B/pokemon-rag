@@ -420,15 +420,24 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
     if operation == "get_level_up_moves":
         for key in ("min_level", "max_level"):
             value = plan.get(key)
-            if value is not None and (not isinstance(value, int) or value < 0):
+
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+            ):
                 raise ValueError(f"{key} doit être null ou un entier positif.")
+
             result[key] = value
+
         if (
             result["min_level"] is not None
             and result["max_level"] is not None
             and result["min_level"] > result["max_level"]
         ):
-            raise ValueError("min_level ne peut pas être supérieur à max_level.")
+            raise ValueError(
+                "min_level ne peut pas être supérieur à max_level."
+            )
 
     return result
 
