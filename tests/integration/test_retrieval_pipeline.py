@@ -6,12 +6,16 @@ import pokemon_rag.rag.retrieval as retrieval
 
 
 def test_real_corpus_is_loaded() -> None:
+    retrieval.ensure_retrieval_initialized()
+
     assert retrieval.CORPUS_IDS
     assert len(retrieval.CORPUS_IDS) == len(retrieval.CORPUS_DOCUMENTS)
     assert len(retrieval.CORPUS_IDS) == len(retrieval.CORPUS_METADATAS)
 
 
 def test_real_corpus_indexes_are_available() -> None:
+    retrieval.ensure_retrieval_initialized()
+
     assert retrieval.POKEMON_TO_INDICES
     assert retrieval.SECTION_TO_INDICES
 

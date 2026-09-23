@@ -50,109 +50,136 @@ def tokenize(text: str) -> list[str]:
 # INITIALISATION
 # =============================================================================
 
-print("=" * 84)
-print("INITIALISATION RAG POKÉMON — HYBRID + RERANKER")
-print("=" * 84)
+_RETRIEVAL_INITIALIZED = False
 
-startup_start = time.perf_counter()
-
-client = chromadb.PersistentClient(path=str(CHROMA_PATH))
-collection = client.get_collection(COLLECTION_NAME)
-
-print(f"Collection Chroma : {COLLECTION_NAME}")
-print(f"Chunks Chroma     : {collection.count():,}")
-
-embedding_start = time.perf_counter()
-embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-embedding_load_time = time.perf_counter() - embedding_start
-
-print(f"Embedding model   : {EMBEDDING_MODEL}")
-print(f"Embedding device  : {embedding_model.device}")
-print(f"Chargement embed. : {embedding_load_time:.3f} s")
-
-reranker_start = time.perf_counter()
-reranker_model = CrossEncoder(RERANKER_MODEL)
-reranker_load_time = time.perf_counter() - reranker_start
-
-print(f"Reranker          : {RERANKER_MODEL}")
-print(f"Reranker device   : {reranker_model.device}")
-print(f"Chargement rerank : {reranker_load_time:.3f} s")
-
-load_start = time.perf_counter()
-
-# IMPORTANT : ne pas faire collection.get() sur toute la collection en une fois.
-# Avec ~35k chunks, Chroma/SQLite peut dépasser sa limite de variables SQL.
-# On charge donc le corpus par petits lots déterministes.
+client = None
+collection = None
+embedding_model = None
+reranker_model = None
 CORPUS_IDS = []
 CORPUS_DOCUMENTS = []
 CORPUS_METADATAS = []
+POKEMON_TO_INDICES: dict[str, list[int]] = defaultdict(list)
+SECTION_TO_INDICES: dict[tuple[str, str], list[int]] = defaultdict(list)
+bm25 = None
 
-GET_BATCH_SIZE = 500
-offset = 0
-total_chunks = collection.count()
 
-with tqdm(total=total_chunks, desc="Chargement corpus", unit="chunk", dynamic_ncols=True) as pbar:
-    while offset < total_chunks:
-        batch = collection.get(
-            include=["documents", "metadatas"],
-            limit=min(GET_BATCH_SIZE, total_chunks - offset),
-            offset=offset,
+def initialize_retrieval() -> None:
+    """Initialise une seule fois les ressources lourdes du moteur RAG."""
+    global _RETRIEVAL_INITIALIZED
+    global client, collection, embedding_model, reranker_model
+    global CORPUS_IDS, CORPUS_DOCUMENTS, CORPUS_METADATAS
+    global POKEMON_TO_INDICES, SECTION_TO_INDICES, bm25
+
+    if _RETRIEVAL_INITIALIZED:
+        return
+
+    print("=" * 84)
+    print("INITIALISATION RAG POKÉMON — HYBRID + RERANKER")
+    print("=" * 84)
+
+    startup_start = time.perf_counter()
+
+    client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+    collection = client.get_collection(COLLECTION_NAME)
+
+    print(f"Collection Chroma : {COLLECTION_NAME}")
+    print(f"Chunks Chroma     : {collection.count():,}")
+
+    embedding_start = time.perf_counter()
+    embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+    embedding_load_time = time.perf_counter() - embedding_start
+
+    print(f"Embedding model   : {EMBEDDING_MODEL}")
+    print(f"Embedding device  : {embedding_model.device}")
+    print(f"Chargement embed. : {embedding_load_time:.3f} s")
+
+    reranker_start = time.perf_counter()
+    reranker_model = CrossEncoder(RERANKER_MODEL)
+    reranker_load_time = time.perf_counter() - reranker_start
+
+    print(f"Reranker          : {RERANKER_MODEL}")
+    print(f"Reranker device   : {reranker_model.device}")
+    print(f"Chargement rerank : {reranker_load_time:.3f} s")
+
+    load_start = time.perf_counter()
+
+    # IMPORTANT : ne pas faire collection.get() sur toute la collection en une fois.
+    # Avec ~35k chunks, Chroma/SQLite peut dépasser sa limite de variables SQL.
+    # On charge donc le corpus par petits lots déterministes.
+
+    GET_BATCH_SIZE = 500
+    offset = 0
+    total_chunks = collection.count()
+
+    with tqdm(total=total_chunks, desc="Chargement corpus", unit="chunk", dynamic_ncols=True) as pbar:
+        while offset < total_chunks:
+            batch = collection.get(
+                include=["documents", "metadatas"],
+                limit=min(GET_BATCH_SIZE, total_chunks - offset),
+                offset=offset,
+            )
+
+            batch_ids = batch.get("ids") or []
+            if not batch_ids:
+                break
+
+            CORPUS_IDS.extend(batch_ids)
+            CORPUS_DOCUMENTS.extend(batch.get("documents") or [])
+            CORPUS_METADATAS.extend(batch.get("metadatas") or [])
+
+            loaded = len(batch_ids)
+            offset += loaded
+            pbar.update(loaded)
+
+    # Index déterministe : Pokémon canonique -> indices de ses chunks dans le corpus.
+    # Il permet au BM25 de travailler uniquement dans le document du Pokémon ciblé.
+    for idx, metadata in enumerate(CORPUS_METADATAS):
+        pokemon = str((metadata or {}).get("pokemon", "")).strip()
+        if pokemon:
+            POKEMON_TO_INDICES[pokemon].append(idx)
+
+    # Index exact des sections fragmentées.
+    for idx, metadata in enumerate(CORPUS_METADATAS):
+        metadata = metadata or {}
+        source_file = str(metadata.get("source_file", "")).strip()
+        section_path = str(metadata.get("section_path") or metadata.get("section") or "").strip()
+        if source_file and section_path:
+            SECTION_TO_INDICES[(source_file, section_path)].append(idx)
+
+    for indices in SECTION_TO_INDICES.values():
+        indices.sort(
+            key=lambda idx: int((CORPUS_METADATAS[idx] or {}).get("section_chunk_number", 0))
         )
 
-        batch_ids = batch.get("ids") or []
-        if not batch_ids:
-            break
+    print(f"Sections indexées  : {len(SECTION_TO_INDICES):,}")
+    print(f"Chargement corpus : {time.perf_counter() - load_start:.3f} s")
 
-        CORPUS_IDS.extend(batch_ids)
-        CORPUS_DOCUMENTS.extend(batch.get("documents") or [])
-        CORPUS_METADATAS.extend(batch.get("metadatas") or [])
+    bm25_start = time.perf_counter()
+    tokenized_corpus = []
 
-        loaded = len(batch_ids)
-        offset += loaded
-        pbar.update(loaded)
+    for document in tqdm(
+        CORPUS_DOCUMENTS,
+        desc="Construction BM25",
+        unit="chunk",
+        dynamic_ncols=True,
+    ):
+        tokenized_corpus.append(tokenize(document))
 
-# Index déterministe : Pokémon canonique -> indices de ses chunks dans le corpus.
-# Il permet au BM25 de travailler uniquement dans le document du Pokémon ciblé.
-POKEMON_TO_INDICES: dict[str, list[int]] = defaultdict(list)
-for idx, metadata in enumerate(CORPUS_METADATAS):
-    pokemon = str((metadata or {}).get("pokemon", "")).strip()
-    if pokemon:
-        POKEMON_TO_INDICES[pokemon].append(idx)
+    bm25 = BM25Okapi(tokenized_corpus)
 
-# Index exact des sections fragmentées.
-SECTION_TO_INDICES: dict[tuple[str, str], list[int]] = defaultdict(list)
-for idx, metadata in enumerate(CORPUS_METADATAS):
-    metadata = metadata or {}
-    source_file = str(metadata.get("source_file", "")).strip()
-    section_path = str(metadata.get("section_path") or metadata.get("section") or "").strip()
-    if source_file and section_path:
-        SECTION_TO_INDICES[(source_file, section_path)].append(idx)
+    print(f"Construction BM25 : {time.perf_counter() - bm25_start:.3f} s")
+    print(f"Startup total     : {time.perf_counter() - startup_start:.3f} s")
+    print("=" * 84)
+    print()
 
-for indices in SECTION_TO_INDICES.values():
-    indices.sort(
-        key=lambda idx: int((CORPUS_METADATAS[idx] or {}).get("section_chunk_number", 0))
-    )
+    _RETRIEVAL_INITIALIZED = True
 
-print(f"Sections indexées  : {len(SECTION_TO_INDICES):,}")
-print(f"Chargement corpus : {time.perf_counter() - load_start:.3f} s")
 
-bm25_start = time.perf_counter()
-tokenized_corpus = []
-
-for document in tqdm(
-    CORPUS_DOCUMENTS,
-    desc="Construction BM25",
-    unit="chunk",
-    dynamic_ncols=True,
-):
-    tokenized_corpus.append(tokenize(document))
-
-bm25 = BM25Okapi(tokenized_corpus)
-
-print(f"Construction BM25 : {time.perf_counter() - bm25_start:.3f} s")
-print(f"Startup total     : {time.perf_counter() - startup_start:.3f} s")
-print("=" * 84)
-print()
+def ensure_retrieval_initialized() -> None:
+    """Déclenche l'initialisation RAG uniquement au premier usage réel."""
+    if not _RETRIEVAL_INITIALIZED:
+        initialize_retrieval()
 
 
 # =============================================================================
@@ -164,6 +191,7 @@ def vector_retrieve(
     n_candidates: int = VECTOR_CANDIDATES,
     pokemon: str | None = None,
 ) -> list[dict]:
+    ensure_retrieval_initialized()
     start = time.perf_counter()
 
     query_embedding = embedding_model.encode(
@@ -226,6 +254,7 @@ def bm25_retrieve(
     n_candidates: int = BM25_CANDIDATES,
     pokemon: str | None = None,
 ) -> list[dict]:
+    ensure_retrieval_initialized()
     start = time.perf_counter()
 
     query_tokens = tokenize(question)
@@ -394,6 +423,7 @@ def section_structural_candidates(
     - au plus SECTION_MAX_PER_PATH chunks par chemin exact, afin qu'une grosse
       section fragmentée ne monopolise pas le pool avant l'étape 4.
     """
+    ensure_retrieval_initialized()
     if not pokemon:
         return []
 
@@ -513,6 +543,7 @@ def section_key(candidate: dict) -> tuple[str, str] | None:
 
 def expand_exact_section(seed: dict, max_chunks: int = MAX_SECTION_EXPANSION_CHUNKS) -> list[dict]:
     """Reconstruit la section exacte du seed, de façon bornée."""
+    ensure_retrieval_initialized()
     key = section_key(seed)
     if key is None:
         return [dict(seed)]
@@ -569,6 +600,7 @@ def select_best_section(
     mesurer si le chemin de section apporte réellement un signal utile avant
     de choisir une formule de combinaison.
     """
+    ensure_retrieval_initialized()
     grouped: dict[tuple[str, str], dict] = {}
 
     for result in results:
@@ -675,6 +707,7 @@ def rerank_candidates(
     pool de candidats. Le CrossEncoder n'a plus à "deviner" la pertinence d'un
     chemin de section via un second score artificiellement pondéré.
     """
+    ensure_retrieval_initialized()
     start = time.perf_counter()
 
     if not candidates:
