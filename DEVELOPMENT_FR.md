@@ -577,3 +577,62 @@ En particulier :
 Des tests d'intégration du graphe ont été ajoutés afin de vérifier les principaux chemins de retry, l'absence de boucle infinie et le maintien du scope Pokémon lors d'un nouveau retrieval.
 
 La suppression du Sufficiency Checker permet également d'éviter un appel LLM systématique avant chaque génération RAG/HYBRID.
+## 21. Chargement paresseux du pipeline de retrieval
+
+L'initialisation du système de retrieval était auparavant effectuée dès l'import du module `retrieval.py`.
+
+Cette initialisation comprend notamment :
+
+- l'ouverture de la collection Chroma ;
+- le chargement du modèle d'embeddings ;
+- le chargement du reranker ;
+- le chargement du corpus ;
+- la construction des index par Pokémon et par section ;
+- la construction de l'index BM25.
+
+Ce comportement imposait donc le coût complet d'initialisation du RAG à tout module important `retrieval.py`, y compris lorsque le retrieval n'était pas réellement utilisé.
+
+Cela affectait particulièrement les tests du graphe et des nodes, qui pouvaient nécessiter plusieurs dizaines de secondes alors que leurs dépendances de retrieval étaient mockées.
+
+L'initialisation a été déplacée dans une fonction dédiée et est maintenant effectuée de manière paresseuse lors du premier accès réel au pipeline de retrieval.
+
+L'import des modules du graphe ne déclenche donc plus automatiquement le chargement du corpus et des modèles.
+
+Les tests d'intégration utilisant réellement le retrieval déclenchent explicitement cette initialisation avant de vérifier directement le contenu du corpus ou de ses index.
+
+Cette modification conserve le comportement du pipeline de retrieval tout en réduisant fortement le coût des tests qui n'en ont pas besoin.
+
+
+## 22. Séparation des politiques de retry
+
+Le graphe utilisait initialement un compteur unique `retry_count` pour limiter les retries après le Grounding Checker.
+
+Ce compteur était partagé entre deux mécanismes différents :
+
+- le nouveau retrieval déclenché après une décision `INSUFFICIENT` ;
+- la nouvelle génération déclenchée après une décision `UNSUPPORTED` ou `CONTRADICTION`.
+
+Cette architecture empêchait certains enchaînements légitimes. Par exemple, un retry de retrieval pouvait consommer l'unique budget disponible puis empêcher une correction de la réponse générée, et inversement.
+
+Le compteur unique a été remplacé par deux compteurs indépendants :
+
+- `retrieval_retry_count` pour les nouveaux retrievals ;
+- `generation_retry_count` pour les nouvelles générations.
+
+Chaque mécanisme dispose actuellement d'un budget maximal d'un retry.
+
+Le graphe peut ainsi effectuer les enchaînements suivants lorsque cela est nécessaire :
+
+Retrieval → Génération → `INSUFFICIENT` → nouveau Retrieval → nouvelle Génération
+
+ou :
+
+Génération → `UNSUPPORTED` / `CONTRADICTION` → nouvelle Génération
+
+Les deux budgets étant indépendants, un retry de retrieval peut également être suivi d'un retry de génération, ou inversement.
+
+Le routage après grounding a également été rendu fail-closed : une décision différente de `PASS`, `INSUFFICIENT`, `UNSUPPORTED` ou `CONTRADICTION` ne déclenche aucun retry supplémentaire et termine le pipeline.
+
+Des tests spécifiques ont d'abord été introduits pour reproduire les limitations du compteur partagé. Après modification de la politique de retry, ces scénarios ainsi que l'ensemble des tests unitaires et d'intégration ont été validés.
+
+La suite de tests unitaires et d'intégration atteint alors 213 tests passants.

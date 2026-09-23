@@ -47,7 +47,8 @@ class PokemonState(TypedDict, total=False):
     grounding_decision: str
     grounding_reason: str
     grounding_time: float
-    retry_count: int
+    retrieval_retry_count: int
+    generation_retry_count: int
     retry_llm_time: float
 
 
@@ -71,17 +72,27 @@ def route_after_retry_retrieval(state: PokemonState) -> str:
 
 def route_after_grounding(state: PokemonState) -> str:
     decision = state.get("grounding_decision")
+
     if decision == "PASS":
         return "pass"
-    if state.get("retry_count", 0) >= 1:
-        return "fail"
+
     if decision == "INSUFFICIENT":
-        return "retry_retrieval"
-    return "retry_answer"
+        if state.get("retrieval_retry_count", 0) < 1:
+            return "retry_retrieval"
+        return "fail"
+
+    if decision in {"UNSUPPORTED", "CONTRADICTION"}:
+        if state.get("generation_retry_count", 0) < 1:
+            return "retry_answer"
+        return "fail"
+
+    return "fail"
 
 
 def mark_generation_retry(state: PokemonState) -> dict:
-    return {"retry_count": state.get("retry_count", 0) + 1}
+    return {
+        "generation_retry_count": state.get("generation_retry_count", 0) + 1
+    }
 
 
 builder = StateGraph(PokemonState)
@@ -234,7 +245,8 @@ def main() -> None:
             {
                 "question": question,
                 "verbose": verbose,
-                "retry_count": 0,
+                "retrieval_retry_count": 0,
+                "generation_retry_count": 0,
             }
         )
         print_answer(result, time.perf_counter() - start)

@@ -55,7 +55,8 @@ def _invoke():
         {
             "question": "Question de test sur Pikachu",
             "verbose": False,
-            "retry_count": 0,
+            "retrieval_retry_count": 0,
+            "generation_retry_count": 0,
         }
     )
 
@@ -75,7 +76,8 @@ def test_pass_stops_without_any_retry():
         result = _invoke()
 
     assert result["grounding_decision"] == "PASS"
-    assert result["retry_count"] == 0
+    assert result.get("retrieval_retry_count", 0) == 0
+    assert result.get("generation_retry_count", 0) == 0
     assert retrieve.call_count == 1
     retry_retrieval.assert_not_called()
     assert client.chat.completions.create.call_count == 1
@@ -110,7 +112,8 @@ def test_insufficient_retries_retrieval_then_regenerates():
 
     assert result["grounding_decision"] == "PASS"
     assert result["answer"] == "Réponse après nouveau retrieval."
-    assert result["retry_count"] == 1
+    assert result["retrieval_retry_count"] == 1
+    assert result.get("generation_retry_count", 0) == 0
     assert client.chat.completions.create.call_count == 2
     assert grounding.call_count == 2
     assert retry_retrieval.call_count == 1
@@ -149,7 +152,8 @@ def test_generation_failure_retries_answer_without_retrieval(first_decision):
 
     assert result["grounding_decision"] == "PASS"
     assert result["answer"] == "Réponse corrigée."
-    assert result["retry_count"] == 1
+    assert result.get("retrieval_retry_count", 0) == 0
+    assert result["generation_retry_count"] == 1
     assert retrieve.call_count == 1
     retry_retrieval.assert_not_called()
     assert client.chat.completions.create.call_count == 2
@@ -182,7 +186,8 @@ def test_second_grounding_failure_stops_instead_of_looping():
         result = _invoke()
 
     assert result["grounding_decision"] == "CONTRADICTION"
-    assert result["retry_count"] == 1
+    assert result.get("retrieval_retry_count", 0) == 0
+    assert result["generation_retry_count"] == 1
     assert client.chat.completions.create.call_count == 2
     assert grounding.call_count == 2
     retry_retrieval.assert_not_called()
@@ -215,7 +220,8 @@ def test_insufficient_retry_that_is_still_insufficient_stops_after_one_retry():
         result = _invoke()
 
     assert result["grounding_decision"] == "INSUFFICIENT"
-    assert result["retry_count"] == 1
+    assert result["retrieval_retry_count"] == 1
+    assert result.get("generation_retry_count", 0) == 0
     assert retry_retrieval.call_count == 1
     assert client.chat.completions.create.call_count == 2
     assert grounding.call_count == 2

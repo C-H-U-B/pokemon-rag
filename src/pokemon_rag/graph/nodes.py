@@ -511,7 +511,7 @@ def retry_retrieval(state: dict) -> dict:
 
     chunks = retrieve_retry_context(
         question=state["question"],
-        grounding_reason=state.get("sufficiency_reason", "") or state.get("grounding_reason", ""),
+        grounding_reason=state.get("grounding_reason", ""),
         pokemon=scoped_pokemon,
         excluded_section_path=previous_section,
     )
@@ -536,7 +536,7 @@ def retry_retrieval(state: dict) -> dict:
     return {
         "context_documents": chunks,
         "retry_retrieval_time": elapsed,
-        "retry_count": state.get("retry_count", 0) + 1,
+        "retrieval_retry_count": state.get("retrieval_retry_count", 0) + 1,
     }
 
 

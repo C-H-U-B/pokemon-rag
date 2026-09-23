@@ -29,14 +29,14 @@ def test_retrieval_uses_expanded_section_as_context():
 def test_retry_keeps_scope_and_excludes_previous_section():
     s={"question":"Q","pokemon":"Pikachu","pokemon_validated":True,
        "context_documents":[{"metadata":{"section_path":"Capacités > Niveau"}}],
-       "sufficiency_reason":"insuffisant","retry_count":1,"verbose":False}
+       "grounding_reason":"insuffisant","retrieval_retry_count":0,"verbose":False}
     with patch.object(nodes,"retrieve_retry_context",return_value=[]) as f:
         r=nodes.retry_retrieval(s)
     k=f.call_args.kwargs
     assert k["pokemon"]=="Pikachu"
     assert k["excluded_section_path"]=="Capacités > Niveau"
     assert k["grounding_reason"]=="insuffisant"
-    assert r["retry_count"]==2
+    assert r["retrieval_retry_count"]==1
 
 def test_build_context_prefers_context_documents():
     r=nodes.build_context({"retrieved_documents":[{"document":"MAUVAIS","metadata":{}}],
