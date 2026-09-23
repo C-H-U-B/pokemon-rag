@@ -1,0 +1,411 @@
+{
+  "metadata": {
+    "collection": "pokemon_documents",
+    "n_cases": 30,
+    "relevance": "exact source_file + exact section_path",
+    "ground_truth_source": "manually curated from exported Chroma section text",
+    "status": "APPROVED"
+  },
+  "cases": [
+    {
+      "id": "candidate_001",
+      "question": "Pourquoi Dracaufeu recherche-t-il des adversaires plus forts que lui ?",
+      "pokemon": "Dracaufeu",
+      "relevant_chunk_ids": [
+        "pokemon::0006_dracaufeu.md::section::c4946ad33b::chunk::00002",
+        "pokemon::0006_dracaufeu.md::section::c4946ad33b::chunk::00003",
+        "pokemon::0006_dracaufeu.md::section::c4946ad33b::chunk::00004"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0006_dracaufeu.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_002",
+      "question": "Comment les Pikachu sauvages communiquent-ils entre eux ?",
+      "pokemon": "Pikachu",
+      "relevant_chunk_ids": [
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00003",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00004",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00005",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00006",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00007",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00008",
+        "pokemon::0025_pikachu.md::section::c4946ad33b::chunk::00009"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0025_pikachu.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_003",
+      "question": "De quels animaux l'apparence de Mewtwo s'inspire-t-elle ?",
+      "pokemon": "Mewtwo",
+      "relevant_chunk_ids": [
+        "pokemon::0150_mewtwo.md::section::c4946ad33b::chunk::00003",
+        "pokemon::0150_mewtwo.md::section::c4946ad33b::chunk::00004"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0150_mewtwo.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_004",
+      "question": "À quoi sert la grande feuille sur la tête de Germignon ?",
+      "pokemon": "Germignon",
+      "relevant_chunk_ids": [
+        "pokemon::0152_germignon.md::section::c4946ad33b::chunk::00002",
+        "pokemon::0152_germignon.md::section::c4946ad33b::chunk::00003"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0152_germignon.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_005",
+      "question": "Quels changements physiques Altaria subit-il lorsqu'il méga-évolue ?",
+      "pokemon": "Méga-Altaria",
+      "relevant_chunk_ids": [
+        "pokemon::0334_mega_altaria.md::section::ee75d8f7f2::chunk::00002"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0334_mega_altaria.md",
+      "expected_section_path": "À propos du Méga-Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_006",
+      "question": "Comment les deux épées de Dimoclès coordonnent-elles leurs attaques ?",
+      "pokemon": "Dimoclès",
+      "relevant_chunk_ids": [
+        "pokemon::0680_dimocles.md::section::c4946ad33b::chunk::00003",
+        "pokemon::0680_dimocles.md::section::c4946ad33b::chunk::00004",
+        "pokemon::0680_dimocles.md::section::c4946ad33b::chunk::00005",
+        "pokemon::0680_dimocles.md::section::c4946ad33b::chunk::00006",
+        "pokemon::0680_dimocles.md::section::c4946ad33b::chunk::00007"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0680_dimocles.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_007",
+      "question": "Quel rôle la musique joue-t-elle dans le comportement de Badabouin ?",
+      "pokemon": "Badabouin",
+      "relevant_chunk_ids": [
+        "pokemon::0811_badabouin.md::section::c4946ad33b::chunk::00002",
+        "pokemon::0811_badabouin.md::section::c4946ad33b::chunk::00003",
+        "pokemon::0811_badabouin.md::section::c4946ad33b::chunk::00004"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0811_badabouin.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_008",
+      "question": "Comment Têtampoule prévient-il ses alliés ?",
+      "pokemon": "Têtampoule",
+      "relevant_chunk_ids": [
+        "pokemon::0938_tetampoule.md::section::c4946ad33b::chunk::00002"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0938_tetampoule.md",
+      "expected_section_path": "À propos du Pokémon > Physionomie et attitudes"
+    },
+    {
+      "id": "candidate_009",
+      "question": "Comment Pyroli évite-t-il de surchauffer ?",
+      "pokemon": "Pyroli",
+      "relevant_chunk_ids": [
+        "pokemon::0136_pyroli.md::section::1f27485c9e::chunk::00008",
+        "pokemon::0136_pyroli.md::section::1f27485c9e::chunk::00009",
+        "pokemon::0136_pyroli.md::section::1f27485c9e::chunk::00010"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0136_pyroli.md",
+      "expected_section_path": "À propos du Pokémon > Descriptions du Pokédex"
+    },
+    {
+      "id": "candidate_010",
+      "question": "Comment Flobio parvient-il à vivre hors de l'eau sans que sa peau s'assèche ?",
+      "pokemon": "Flobio",
+      "relevant_chunk_ids": [
+        "pokemon::0259_flobio.md::section::1f27485c9e::chunk::00008",
+        "pokemon::0259_flobio.md::section::1f27485c9e::chunk::00009"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0259_flobio.md",
+      "expected_section_path": "À propos du Pokémon > Descriptions du Pokédex"
+    },
+    {
+      "id": "candidate_011",
+      "question": "Que racontent les descriptions du Pokédex à propos des choses invisibles que Scrutella semble percevoir ?",
+      "pokemon": "Scrutella",
+      "relevant_chunk_ids": [
+        "pokemon::0574_scrutella.md::section::1f27485c9e::chunk::00008"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0574_scrutella.md",
+      "expected_section_path": "À propos du Pokémon > Descriptions du Pokédex"
+    },
+    {
+      "id": "candidate_012",
+      "question": "Comment Flamiaou produit-il ses attaques de type Feu pendant sa toilette ?",
+      "pokemon": "Flamiaou",
+      "relevant_chunk_ids": [
+        "pokemon::0725_flamiaou.md::section::1f27485c9e::chunk::00010",
+        "pokemon::0725_flamiaou.md::section::1f27485c9e::chunk::00011"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0725_flamiaou.md",
+      "expected_section_path": "À propos du Pokémon > Descriptions du Pokédex"
+    },
+    {
+      "id": "candidate_013",
+      "question": "Quel lien Éthernatos a-t-il avec l'énergie de Galar et le phénomène Dynamax ?",
+      "pokemon": "Éthernatos",
+      "relevant_chunk_ids": [
+        "pokemon::0890_ethernatos.md::section::1f27485c9e::chunk::00013"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0890_ethernatos.md",
+      "expected_section_path": "À propos du Pokémon > Descriptions du Pokédex"
+    },
+    {
+      "id": "candidate_014",
+      "question": "D'où vient le nom français de Katagami ?",
+      "pokemon": "Katagami",
+      "relevant_chunk_ids": [
+        "pokemon::0798_katagami.md::section::008f9b955e::chunk::00013"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0798_katagami.md",
+      "expected_section_path": "À propos du Pokémon > Étymologies"
+    },
+    {
+      "id": "candidate_015",
+      "question": "Quelle est l'origine du nom anglais Nacli ?",
+      "pokemon": "Selutin",
+      "relevant_chunk_ids": [
+        "pokemon::0932_selutin.md::section::008f9b955e::chunk::00008"
+      ],
+      "category": "core",
+      "status": "APPROVED",
+      "expected_source_file": "0932_selutin.md",
+      "expected_section_path": "À propos du Pokémon > Étymologies"
+    },
+    {
+      "id": "candidate_016",
+      "question": "Que s'est-il passé lorsque Steelix a été accidentellement mis en colère par la Team Rocket ?",
+      "pokemon": "Steelix",
+      "relevant_chunk_ids": [
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00027",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00028",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00029",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00030",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00031",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00032",
+        "pokemon::0208_steelix.md::section::57e8ce7197::chunk::00033"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0208_steelix.md",
+      "expected_section_path": "Apparitions dans les dessins animés > {{série|PS}}"
+    },
+    {
+      "id": "candidate_017",
+      "question": "Pourquoi les Galekid de l'Île de Fer souffrent-ils dans le dessin animé ?",
+      "pokemon": "Galekid",
+      "relevant_chunk_ids": [
+        "pokemon::0304_galekid.md::section::57e8ce7197::chunk::00027",
+        "pokemon::0304_galekid.md::section::57e8ce7197::chunk::00028",
+        "pokemon::0304_galekid.md::section::57e8ce7197::chunk::00029"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0304_galekid.md",
+      "expected_section_path": "Apparitions dans les dessins animés > {{série|PS}}"
+    },
+    {
+      "id": "candidate_018",
+      "question": "Comment Luxray retrouve-t-il la capacité d'utiliser ses attaques Électrik avec Marvel ?",
+      "pokemon": "Luxray",
+      "relevant_chunk_ids": [
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00043",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00044",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00045",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00046",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00047",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00048",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00049",
+        "pokemon::0405_luxray.md::section::bd45411227::chunk::00050"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0405_luxray.md",
+      "expected_section_path": "Apparitions dans les dessins animés > {{Série|PS}}"
+    },
+    {
+      "id": "candidate_019",
+      "question": "Qu'est-il arrivé à Mushana après l'explosion du Site des Rêves ?",
+      "pokemon": "Mushana",
+      "relevant_chunk_ids": [
+        "pokemon::0518_mushana.md::section::cad93b694c::chunk::00022",
+        "pokemon::0518_mushana.md::section::cad93b694c::chunk::00023",
+        "pokemon::0518_mushana.md::section::cad93b694c::chunk::00024"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0518_mushana.md",
+      "expected_section_path": "Apparitions dans le dessin animé"
+    },
+    {
+      "id": "candidate_020",
+      "question": "Quel lien existe entre Nounourson et le Chelours qui s'occupe de la Team Rocket ?",
+      "pokemon": "Nounourson",
+      "relevant_chunk_ids": [
+        "pokemon::0759_nounourson.md::section::cad93b694c::chunk::00019"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0759_nounourson.md",
+      "expected_section_path": "Apparitions dans le dessin animé"
+    },
+    {
+      "id": "candidate_021",
+      "question": "Quel est le rôle de Raichu d'Alola dans Pokémon UNITE ?",
+      "pokemon": "Raichu d'Alola",
+      "relevant_chunk_ids": [
+        "pokemon::0026_raichu_d_alola.md::section::e7f567de28::chunk::00028",
+        "pokemon::0026_raichu_d_alola.md::section::e7f567de28::chunk::00029"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0026_raichu_d_alola.md",
+      "expected_section_path": "Apparition dans UNITE"
+    },
+    {
+      "id": "candidate_022",
+      "question": "Quelle capacité Unité Gardevoir utilise-t-il dans Pokémon UNITE ?",
+      "pokemon": "Gardevoir",
+      "relevant_chunk_ids": [
+        "pokemon::0282_gardevoir.md::section::e7f567de28::chunk::00039"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0282_gardevoir.md",
+      "expected_section_path": "Apparition dans UNITE"
+    },
+    {
+      "id": "candidate_023",
+      "question": "Quel type de combattant Darkrai est-il dans Pokémon UNITE ?",
+      "pokemon": "Darkrai",
+      "relevant_chunk_ids": [
+        "pokemon::0491_darkrai.md::section::e7f567de28::chunk::00034"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0491_darkrai.md",
+      "expected_section_path": "Apparition dans UNITE"
+    },
+    {
+      "id": "candidate_024",
+      "question": "Quel effet l'attaque de Genesect a-t-elle dans Super Smash Bros. Ultimate ?",
+      "pokemon": "Genesect",
+      "relevant_chunk_ids": [
+        "pokemon::0649_genesect.md::section::b5333e89bb::chunk::00034",
+        "pokemon::0649_genesect.md::section::b5333e89bb::chunk::00035"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0649_genesect.md",
+      "expected_section_path": "Apparitions dans d'autres jeux > Dans SSBU"
+    },
+    {
+      "id": "candidate_025",
+      "question": "Quel effet Mort-Ailes d'Yveltal produit-il dans Pokkén Tournament ?",
+      "pokemon": "Yveltal",
+      "relevant_chunk_ids": [
+        "pokemon::0717_yveltal.md::section::e4e525fb59::chunk::00026"
+      ],
+      "category": "documentary",
+      "status": "APPROVED",
+      "expected_source_file": "0717_yveltal.md",
+      "expected_section_path": "Apparitions dans d'autres jeux > Dans Pokkén Tournament"
+    },
+    {
+      "id": "candidate_026",
+      "question": "Pourquoi Noadkoko et Noadkoko d'Alola ont-ils été choisis comme ambassadeurs touristiques de Miyazaki ?",
+      "pokemon": "Noadkoko d'Alola",
+      "relevant_chunk_ids": [
+        "pokemon::0103_noadkoko_d_alola.md::section::8d56ebb4af::chunk::00028",
+        "pokemon::0103_noadkoko_d_alola.md::section::8d56ebb4af::chunk::00029"
+      ],
+      "category": "rare",
+      "status": "APPROVED",
+      "expected_source_file": "0103_noadkoko_d_alola.md",
+      "expected_section_path": "Anecdotes"
+    },
+    {
+      "id": "candidate_027",
+      "question": "Pourquoi Terhal était-il particulièrement difficile à capturer avant la huitième génération ?",
+      "pokemon": "Terhal",
+      "relevant_chunk_ids": [
+        "pokemon::0374_terhal.md::section::d566d517d1::chunk::00025"
+      ],
+      "category": "rare",
+      "status": "APPROVED",
+      "expected_source_file": "0374_terhal.md",
+      "expected_section_path": "Anecdote"
+    },
+    {
+      "id": "candidate_028",
+      "question": "Qui a conçu le design de Zorua ?",
+      "pokemon": "Zorua",
+      "relevant_chunk_ids": [
+        "pokemon::0570_zorua.md::section::d566d517d1::chunk::00036"
+      ],
+      "category": "rare",
+      "status": "APPROVED",
+      "expected_source_file": "0570_zorua.md",
+      "expected_section_path": "Anecdote"
+    },
+    {
+      "id": "candidate_029",
+      "question": "Quelle particularité de type distinguait Câblifère des autres Ultra-Chimères à la sortie de Soleil et Lune ?",
+      "pokemon": "Câblifère",
+      "relevant_chunk_ids": [
+        "pokemon::0796_cablifere.md::section::8d56ebb4af::chunk::00026"
+      ],
+      "category": "rare",
+      "status": "APPROVED",
+      "expected_source_file": "0796_cablifere.md",
+      "expected_section_path": "Anecdotes"
+    },
+    {
+      "id": "candidate_030",
+      "question": "Qui a conçu le design de Pâtachiot ?",
+      "pokemon": "Pâtachiot",
+      "relevant_chunk_ids": [
+        "pokemon::0926_patachiot.md::section::d566d517d1::chunk::00022"
+      ],
+      "category": "rare",
+      "status": "APPROVED",
+      "expected_source_file": "0926_patachiot.md",
+      "expected_section_path": "Anecdote"
+    }
+  ]
+}

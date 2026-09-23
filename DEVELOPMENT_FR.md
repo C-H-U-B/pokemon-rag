@@ -677,3 +677,112 @@ Le Grounding Checker a ensuite été évalué sur un ensemble élargi de 20 situ
 Le checker classe correctement 19 cas sur 20. Le cas restant correspond à une confusion entre `CONTRADICTION` et `UNSUPPORTED` lorsqu'une réponse remplace entièrement une méthode établie par le contexte par une autre méthode non supportée. Cette confusion n'affecte actuellement pas la politique de retry, les deux décisions déclenchant un nouveau passage de génération.
 
 Ce cas est conservé comme échec connu dans les tests longs plutôt que de spécialiser davantage le prompt pour cet exemple.
+
+## 24. Mise en place d'un benchmark du retrieval
+
+Après la stabilisation du pipeline de retrieval et du mécanisme de grounding, un benchmark dédié au retrieval a été ajouté afin de mesurer objectivement sa qualité sur le corpus Poképédia réel.
+
+L'objectif est de disposer d'une baseline reproductible avant toute nouvelle optimisation du retrieval.
+
+### Construction du jeu de référence
+
+Une première approche consistait à générer automatiquement les questions de benchmark à l'aide d'un LLM.
+
+Cette approche a été abandonnée après analyse des questions produites. Plusieurs problèmes ont été observés :
+
+- questions contenant plusieurs intentions ;
+- formulations artificielles faisant référence au document source ;
+- questions relevant en réalité du moteur de requêtes structurées ;
+- répartition insuffisamment représentative des différents types de contenu du corpus.
+
+Le jeu de référence a donc finalement été construit manuellement à partir du véritable index Chroma.
+
+Un catalogue des sections présentes dans `pokemon_documents` a d'abord été extrait. L'index contient 27 970 sections logiques, identifiées par le couple :
+
+```text
+source_file + section_path
+```
+
+Trente sections ont ensuite été sélectionnées dans ce catalogue et leur contenu réel a été exporté depuis Chroma.
+
+Le dataset final contient 30 questions réparties en trois catégories :
+
+- 15 questions `core`, portant principalement sur des descriptions, comportements, origines ou informations générales sur les Pokémon ;
+- 10 questions `documentary`, portant notamment sur les apparitions dans les dessins animés ou d'autres jeux ;
+- 5 questions `rare`, construites à partir d'informations plus spécifiques présentes dans les sections d'anecdotes.
+
+Les questions ont été rédigées manuellement à partir du contenu effectivement présent dans les sections sélectionnées.
+
+Chaque question possède comme vérité terrain le couple exact :
+
+```text
+expected_source_file
+expected_section_path
+```
+
+Les identifiants des chunks correspondants ont également été conservés afin de pouvoir auditer les cas du benchmark.
+
+Cette méthode permet d'évaluer le moteur de retrieval sur le véritable corpus utilisé par l'application, sans créer un corpus artificiel spécifiquement adapté au benchmark.
+
+### Métriques
+
+Le benchmark exécute le véritable pipeline de retrieval :
+
+```text
+Vector Search
+    +
+BM25
+    ↓
+RRF
+    ↓
+candidats structurels
+    ↓
+CrossEncoder
+    ↓
+Top-K
+```
+
+Pour chaque question, la position de la section attendue dans les résultats est mesurée.
+
+Les métriques retenues sont :
+
+- `Recall@1` : proportion de questions pour lesquelles la bonne section est classée première ;
+- `Recall@3` : proportion pour lesquelles elle apparaît dans les trois premiers résultats ;
+- `Recall@5` : proportion pour lesquelles elle apparaît dans les cinq premiers résultats ;
+- `MRR` (`Mean Reciprocal Rank`) : mesure tenant compte de la position du premier résultat correct.
+
+Le temps d'initialisation du moteur est mesuré séparément des temps de requête afin de distinguer le cold start des performances une fois les modèles et index chargés.
+
+### Résultats
+
+Le benchmark sur les 30 questions donne les résultats suivants :
+
+```text
+Cas               : 30
+
+Recall@1          : 0.767 (23/30)
+Recall@3          : 1.000 (30/30)
+Recall@5          : 1.000 (30/30)
+MRR               : 0.872
+
+Cold start        : 18.943 s
+
+Warm mean         : 2247.7 ms
+Warm median       : 2273.3 ms
+Warm p95          : 2888.2 ms
+Warm min/max      : 1041.5 / 3791.2 ms
+
+Échecs Top-5      : 0
+```
+
+La section attendue est donc retrouvée pour les 30 questions dans les trois premiers résultats.
+
+Dans 23 cas sur 30, elle est directement classée en première position.
+
+Les sept autres cas correspondent à des problèmes de classement relatif plutôt qu'à une absence de la section recherchée dans les candidats retournés.
+
+Ces résultats fournissent une première baseline mesurée du retrieval sur le corpus Poképédia réel.
+
+Ils ne justifient pas à ce stade une modification du pipeline de retrieval : la bonne section est systématiquement disponible dans le Top-3 et aucune question du benchmark n'échoue en Top-5.
+
+Les performances temporelles montrent en revanche un coût moyen d'environ 2,25 secondes par requête une fois le moteur initialisé. Cette mesure servira de référence pour les futures optimisations de performances.
