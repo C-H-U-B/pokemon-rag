@@ -28,6 +28,8 @@ CASES = [
     ids=["pikachu-evolution", "bulbizarre-moves"],
 )
 def test_retrieval_quality_cases(case: dict) -> None:
+    retrieval.ensure_retrieval_initialized()
+
     pokemon = case["pokemon"]
     if pokemon not in retrieval.POKEMON_TO_INDICES:
         pytest.skip(f"{pokemon} absent de l'index réel")

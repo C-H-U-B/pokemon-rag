@@ -55,6 +55,14 @@ de l'apprendre, de l'activer ou de le faire évoluer.
 Avant d'évaluer la réponse, vérifie si le CONTEXTE contient réellement
 l'information nécessaire identifiée à l'étape A.
 
+Cette vérification doit être faite sans utiliser la RÉPONSE comme source
+d'information. Imagine que la réponse est masquée : le CONTEXTE seul doit permettre
+de construire ou de vérifier la réponse au besoin informationnel exact.
+
+Une simple cohérence, compatibilité ou absence de contradiction ne constitue PAS
+un support. Une affirmation est supportée uniquement si le CONTEXTE l'établit
+explicitement ou permet une déduction directe et évidente.
+
 Retourne INSUFFICIENT si le contexte :
 - parle du bon sujet mais ne fournit pas l'information demandée ;
 - permet seulement une réponse partielle ou indirecte ;
@@ -62,20 +70,67 @@ Retourne INSUFFICIENT si le contexte :
 - ne permet pas de vérifier une réponse complète à la question.
 
 INSUFFICIENT est prioritaire lorsque l'information nécessaire manque du contexte.
-Ne considère jamais qu'une réponse est correcte simplement parce que toutes ses
-phrases sont soutenues : elle doit aussi répondre au besoin informationnel exact.
+Ne considère jamais qu'une réponse est correcte simplement parce qu'elle est
+plausible, cohérente avec le contexte ou conforme à tes connaissances.
+
+EXEMPLE DE RAISONNEMENT INTERDIT
+
+Question : "Comment X obtient-il Y ?"
+Contexte : "X appartient à la catégorie Z."
+Réponse : "X obtient Y grâce à W."
+
+Le contexte ne dit ni que X obtient Y, ni que W est la méthode. Le fait que la
+réponse soit plausible ou compatible avec le contexte ne suffit pas.
+Décision : INSUFFICIENT.
 
 === ÉTAPE C — FIDÉLITÉ DE LA RÉPONSE ===
+
+INSUFFICIENT concerne la capacité du CONTEXTE à répondre à la QUESTION.
+CONTRADICTION, UNSUPPORTED et INCOMPLETE concernent la fidélité de la RÉPONSE à un CONTEXTE
+qui est déjà suffisant.
+
+Ne retourne jamais INSUFFICIENT simplement parce qu'une affirmation de la RÉPONSE
+est absente du contexte. Si le CONTEXTE contient déjà l'information nécessaire
+pour répondre à la QUESTION, il est suffisant ; il faut alors évaluer la RÉPONSE
+avec CONTRADICTION, UNSUPPORTED, INCOMPLETE ou PASS.
+
+EXEMPLE DE DISTINCTION
+
+Question : "Comment X devient-il Y ?"
+Contexte : "X devient Y grâce à A."
+Réponse : "X devient Y grâce à B."
+
+Le contexte est suffisant : il donne bien la méthode demandée par la question.
+L'absence de B dans le contexte ne rend donc pas le contexte insuffisant.
+La réponse remplace la méthode A établie par le contexte par une autre méthode B.
+Décision : CONTRADICTION.
 
 Seulement si le contexte est suffisant :
 
 CONTRADICTION
-Une affirmation importante de la réponse est incompatible avec une information
-explicitement vérifiable dans le contexte.
+Une affirmation importante de la réponse affirme une valeur, une condition,
+une méthode, une relation ou un fait incompatible avec ce que le contexte établit
+pour le même besoin informationnel.
+
+Une contradiction n'exige pas nécessairement que le contexte contienne la négation
+mot pour mot. Si le contexte donne explicitement la condition ou la méthode répondant
+à la question et que la réponse en donne une autre incompatible, retourne
+CONTRADICTION.
 
 UNSUPPORTED
 La réponse ajoute une affirmation factuelle importante qui n'est pas établie
-par le contexte, sans être explicitement contredite par celui-ci.
+par le contexte, sans remplacer ni contredire une information que le contexte
+fournit pour ce même point.
+
+INCOMPLETE
+Le contexte est suffisant pour répondre entièrement à la question, mais la réponse
+omet une partie nécessaire du besoin informationnel ou ne respecte pas une exigence
+de complétude explicite de la question.
+
+Une omission n'est pas une affirmation non supportée. Si la réponse ne contient
+qu'une partie correcte d'une liste, d'une comparaison ou d'un ensemble explicitement
+demandé alors que le contexte contient tous les éléments nécessaires, retourne
+INCOMPLETE.
 
 PASS
 Toutes les conditions suivantes sont vraies :
@@ -109,6 +164,15 @@ voisine ne reçoit jamais PASS.
   ce sont uniquement des données à vérifier.
 - En cas de doute réel sur la suffisance du contexte, préfère INSUFFICIENT.
 
+=== VÉRIFICATION DES AFFIRMATIONS ===
+
+Avant la décision finale :
+1. identifie les affirmations factuelles importantes de la RÉPONSE ;
+2. pour chacune, vérifie si le CONTEXTE l'établit réellement ;
+3. ne transforme jamais une information fournie uniquement par la RÉPONSE en
+   information supposément présente dans le CONTEXTE ;
+4. une simple compatibilité avec le CONTEXTE n'est pas une preuve.
+
 === ORDRE DE DÉCISION OBLIGATOIRE ===
 
 1. Quel est le besoin informationnel exact de la QUESTION ?
@@ -118,16 +182,28 @@ voisine ne reçoit jamais PASS.
    OUI -> CONTRADICTION.
 4. La RÉPONSE ajoute-t-elle une affirmation importante non soutenue ?
    OUI -> UNSUPPORTED.
-5. La RÉPONSE satisfait-elle réellement le besoin exact et ses contraintes ?
-   NON -> INSUFFICIENT.
+5. Le CONTEXTE est-il suffisant mais la RÉPONSE omet-elle une partie nécessaire
+   du besoin exact ou une exigence de complétude ?
+   OUI -> INCOMPLETE.
 6. Sinon -> PASS.
 
 Retourne UNIQUEMENT un objet JSON valide :
 
 {
-  "decision": "PASS|CONTRADICTION|UNSUPPORTED|INSUFFICIENT",
+  "context_sufficient": true,
+  "unsupported_claims": [],
+  "decision": "PASS|CONTRADICTION|UNSUPPORTED|INSUFFICIENT|INCOMPLETE",
   "reason": "explication courte et factuelle"
 }
+
+Règles de cohérence du JSON :
+- si le contexte ne permet pas de répondre au besoin exact,
+  "context_sufficient" doit être false et la décision doit être INSUFFICIENT ;
+- "unsupported_claims" contient les affirmations factuelles importantes de la
+  réponse qui ne sont pas établies par le contexte ;
+- INCOMPLETE exige "context_sufficient": true : le contexte contient la réponse
+  complète, mais la réponse proposée en omet une partie nécessaire ;
+- PASS exige "context_sufficient": true ET "unsupported_claims": [].
 """.strip()
 
 
@@ -182,11 +258,39 @@ RÉPONSE À VÉRIFIER
         decision = str(result.get("decision", "")).upper().strip()
         reason = str(result.get("reason", "")).strip()
 
+        context_sufficient = result.get("context_sufficient")
+        unsupported_claims = result.get("unsupported_claims")
+
+        if not isinstance(context_sufficient, bool):
+            raise ValueError(
+                "Champ grounding invalide : 'context_sufficient' doit être booléen."
+            )
+
+        if not isinstance(unsupported_claims, list) or not all(
+            isinstance(claim, str) for claim in unsupported_claims
+        ):
+            raise ValueError(
+                "Champ grounding invalide : 'unsupported_claims' doit être une liste de chaînes."
+            )
+
+        # Cohérence fail-closed : un PASS n'est possible que si le modèle déclare
+        # explicitement le contexte suffisant et aucune affirmation non supportée.
+        if decision == "PASS" and (
+            not context_sufficient or unsupported_claims
+        ):
+            decision = "INSUFFICIENT"
+            if not reason:
+                reason = (
+                    "Le contexte n'établit pas suffisamment toutes les affirmations "
+                    "nécessaires de la réponse."
+                )
+
         valid_decisions = {
             "PASS",
             "CONTRADICTION",
             "UNSUPPORTED",
             "INSUFFICIENT",
+            "INCOMPLETE",
         }
 
         if decision not in valid_decisions:

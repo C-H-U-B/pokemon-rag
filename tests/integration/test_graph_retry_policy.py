@@ -53,7 +53,8 @@ def _invoke():
         {
             "question": "Question de test sur Pikachu",
             "verbose": False,
-            "retry_count": 0,
+            "retrieval_retry_count": 0,
+            "generation_retry_count": 0,
         }
     )
 
@@ -150,6 +151,45 @@ def test_generation_retry_does_not_consume_retrieval_retry_budget():
     assert retry_retrieval.call_count == 1
     assert client.chat.completions.create.call_count == 3
     assert grounding.call_count == 3
+
+
+
+def test_incomplete_retries_answer_without_retrieval():
+    """
+    Une réponse incomplète avec un contexte suffisant doit consommer le budget
+    de génération, pas le budget de retrieval.
+    """
+    first = _chunk("Contexte suffisant.", "Section A")
+
+    client = MagicMock()
+    client.chat.completions.create.side_effect = [
+        _llm_response("Réponse incomplète."),
+        _llm_response("Réponse complète."),
+    ]
+
+    with (
+        patch.object(nodes, "route_question", return_value=_router_result()),
+        patch.object(nodes, "retrieve", return_value=[first]) as retrieve,
+        patch.object(nodes, "retrieve_retry_context") as retry_retrieval,
+        patch.object(
+            nodes,
+            "check_grounding",
+            side_effect=[
+                _grounding("INCOMPLETE", "La réponse omet une partie nécessaire."),
+                _grounding("PASS"),
+            ],
+        ) as grounding,
+        patch.object(nodes, "llm_client", client),
+    ):
+        result = _invoke()
+
+    assert result["grounding_decision"] == "PASS"
+    assert result["retrieval_retry_count"] == 0
+    assert result["generation_retry_count"] == 1
+    assert retrieve.call_count == 1
+    retry_retrieval.assert_not_called()
+    assert client.chat.completions.create.call_count == 2
+    assert grounding.call_count == 2
 
 
 def test_unknown_grounding_decision_fails_closed_without_retry():

@@ -81,7 +81,7 @@ def route_after_grounding(state: PokemonState) -> str:
             return "retry_retrieval"
         return "fail"
 
-    if decision in {"UNSUPPORTED", "CONTRADICTION"}:
+    if decision in {"UNSUPPORTED", "CONTRADICTION", "INCOMPLETE"}:
         if state.get("generation_retry_count", 0) < 1:
             return "retry_answer"
         return "fail"

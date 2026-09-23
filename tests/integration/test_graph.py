@@ -124,7 +124,7 @@ def test_insufficient_retries_retrieval_then_regenerates():
     assert kwargs["grounding_reason"] == "Le contexte ne répond pas à la question."
 
 
-@pytest.mark.parametrize("first_decision", ["UNSUPPORTED", "CONTRADICTION"])
+@pytest.mark.parametrize("first_decision", ["UNSUPPORTED", "CONTRADICTION", "INCOMPLETE"])
 def test_generation_failure_retries_answer_without_retrieval(first_decision):
     first = _chunk("Contexte suffisant.", "Section A")
 

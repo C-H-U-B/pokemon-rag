@@ -10,3 +10,9 @@ requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "long: tests lents utilisant LLM, modèles locaux ou pipelines complets",
+]

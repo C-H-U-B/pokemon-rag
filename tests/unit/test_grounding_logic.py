@@ -24,6 +24,7 @@ def _response(content: str):
         ("CONTRADICTION", False),
         ("UNSUPPORTED", False),
         ("INSUFFICIENT", False),
+        ("INCOMPLETE", False),
     ],
 )
 def test_check_grounding_accepts_valid_decisions(
@@ -35,7 +36,7 @@ def test_check_grounding_accepts_valid_decisions(
         grounding.client.chat.completions,
         "create",
         lambda **kwargs: _response(
-            f'{{"decision":"{decision}","reason":"raison de test"}}'
+            f'{{"context_sufficient":true,"unsupported_claims":[],"decision":"{decision}","reason":"raison de test"}}'
         ),
     )
 
@@ -56,7 +57,7 @@ def test_check_grounding_normalizes_decision(monkeypatch) -> None:
         grounding.client.chat.completions,
         "create",
         lambda **kwargs: _response(
-            '{"decision":"  pass  ","reason":"ok"}'
+            '{"context_sufficient":true,"unsupported_claims":[],"decision":"  pass  ","reason":"ok"}'
         ),
     )
 
@@ -69,8 +70,8 @@ def test_check_grounding_normalizes_decision(monkeypatch) -> None:
 @pytest.mark.parametrize(
     "content",
     [
-        '```json\n{"decision":"PASS","reason":"ok"}\n```',
-        '```\n{"decision":"PASS","reason":"ok"}\n```',
+        '```json\n{"context_sufficient":true,"unsupported_claims":[],"decision":"PASS","reason":"ok"}\n```',
+        '```\n{"context_sufficient":true,"unsupported_claims":[],"decision":"PASS","reason":"ok"}\n```',
     ],
     ids=["json-fence", "plain-fence"],
 )
@@ -96,7 +97,7 @@ def test_check_grounding_uses_default_reason_when_empty(monkeypatch) -> None:
         grounding.client.chat.completions,
         "create",
         lambda **kwargs: _response(
-            '{"decision":"PASS","reason":""}'
+            '{"context_sufficient":true,"unsupported_claims":[],"decision":"PASS","reason":""}'
         ),
     )
 
@@ -111,7 +112,7 @@ def test_check_grounding_uses_default_reason_when_empty(monkeypatch) -> None:
     "content",
     [
         "pas du json",
-        '{"decision":"UNKNOWN","reason":"x"}',
+        '{"context_sufficient":true,"unsupported_claims":[],"decision":"UNKNOWN","reason":"x"}',
         '{"reason":"x"}',
         "[]",
     ],
@@ -162,7 +163,7 @@ def test_check_grounding_sends_expected_model_and_prompts(monkeypatch) -> None:
     def fake_create(**kwargs):
         captured.update(kwargs)
         return _response(
-            '{"decision":"PASS","reason":"ok"}'
+            '{"context_sufficient":true,"unsupported_claims":[],"decision":"PASS","reason":"ok"}'
         )
 
     monkeypatch.setattr(
@@ -196,10 +197,43 @@ def test_check_grounding_does_not_treat_non_pass_as_grounded(monkeypatch) -> Non
         grounding.client.chat.completions,
         "create",
         lambda **kwargs: _response(
-            '{"decision":"UNSUPPORTED","reason":"information absente"}'
+            '{"context_sufficient":true,"unsupported_claims":["information absente"],"decision":"UNSUPPORTED","reason":"information absente"}'
         ),
     )
 
     result = grounding.check_grounding("Q", "C", "R")
 
+    assert result["grounded"] is False
+
+
+
+def test_check_grounding_rejects_pass_when_context_is_insufficient(monkeypatch) -> None:
+    monkeypatch.setattr(
+        grounding.client.chat.completions,
+        "create",
+        lambda **kwargs: _response(
+            '{"context_sufficient":false,"unsupported_claims":[],'
+            '"decision":"PASS","reason":"contexte insuffisant"}'
+        ),
+    )
+
+    result = grounding.check_grounding("Q", "C", "R")
+
+    assert result["decision"] == "INSUFFICIENT"
+    assert result["grounded"] is False
+
+
+def test_check_grounding_rejects_pass_with_unsupported_claims(monkeypatch) -> None:
+    monkeypatch.setattr(
+        grounding.client.chat.completions,
+        "create",
+        lambda **kwargs: _response(
+            '{"context_sufficient":true,"unsupported_claims":["fait absent"],'
+            '"decision":"PASS","reason":"affirmation absente"}'
+        ),
+    )
+
+    result = grounding.check_grounding("Q", "C", "R")
+
+    assert result["decision"] == "INSUFFICIENT"
     assert result["grounded"] is False

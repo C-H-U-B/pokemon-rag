@@ -636,3 +636,44 @@ Le routage après grounding a également été rendu fail-closed : une décision
 Des tests spécifiques ont d'abord été introduits pour reproduire les limitations du compteur partagé. Après modification de la politique de retry, ces scénarios ainsi que l'ensemble des tests unitaires et d'intégration ont été validés.
 
 La suite de tests unitaires et d'intégration atteint alors 213 tests passants.
+
+## 23. Renforcement du Grounding Checker et distinction des types d'échec
+
+Les tests longs du Grounding Checker ont été étendus afin d'évaluer plus largement sa capacité à distinguer la suffisance du contexte de la fidélité de la réponse.
+
+Les premiers tests ont mis en évidence une confusion importante : le modèle pouvait considérer une réponse comme valide lorsqu'elle était simplement cohérente avec le contexte, alors que l'information nécessaire pour répondre à la question n'était pas réellement présente dans celui-ci.
+
+Le Grounding Checker a donc été renforcé afin de distinguer explicitement :
+
+- la suffisance du contexte pour répondre à la question ;
+- les affirmations effectivement supportées par le contexte ;
+- les contradictions avec une information établie ;
+- les informations supplémentaires non supportées.
+
+La sortie du checker contient désormais notamment `context_sufficient` et `unsupported_claims`, ce qui permet de rendre ces vérifications explicites et d'appliquer des contrôles fail-closed côté Python.
+
+L'élargissement des tests a ensuite révélé un autre cas distinct : un contexte peut être entièrement suffisant alors que la réponse générée n'utilise qu'une partie des informations nécessaires. Ce cas ne correspond pas à `INSUFFICIENT`, puisque relancer le retrieval serait inutile.
+
+Une nouvelle décision `INCOMPLETE` a donc été introduite.
+
+La taxonomie du Grounding Checker devient :
+
+- `PASS` : le contexte est suffisant et la réponse est complète et supportée ;
+- `INSUFFICIENT` : le contexte ne contient pas suffisamment d'informations pour répondre à la question ;
+- `INCOMPLETE` : le contexte est suffisant mais la réponse omet une partie nécessaire ;
+- `UNSUPPORTED` : la réponse ajoute une affirmation importante qui n'est pas établie par le contexte ;
+- `CONTRADICTION` : la réponse fournit une information incompatible avec ce que le contexte établit.
+
+Cette distinction est également utilisée par la politique de retry du graphe :
+
+- `INSUFFICIENT` déclenche un retry du retrieval ;
+- `INCOMPLETE`, `UNSUPPORTED` et `CONTRADICTION` déclenchent un retry de génération ;
+- `PASS` termine normalement l'exécution.
+
+Les tests unitaires et d'intégration ont été adaptés à cette nouvelle taxonomie et la suite de régression reste entièrement passante.
+
+Le Grounding Checker a ensuite été évalué sur un ensemble élargi de 20 situations couvrant notamment la suffisance du contexte, les réponses incomplètes, les contradictions, les informations supplémentaires non supportées et différentes contraintes explicites de la question.
+
+Le checker classe correctement 19 cas sur 20. Le cas restant correspond à une confusion entre `CONTRADICTION` et `UNSUPPORTED` lorsqu'une réponse remplace entièrement une méthode établie par le contexte par une autre méthode non supportée. Cette confusion n'affecte actuellement pas la politique de retry, les deux décisions déclenchant un nouveau passage de génération.
+
+Ce cas est conservé comme échec connu dans les tests longs plutôt que de spécialiser davantage le prompt pour cet exemple.
