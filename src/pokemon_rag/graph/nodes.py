@@ -4,7 +4,6 @@ import time
 from pathlib import Path
 from openai import OpenAI
 from pokemon_rag.rag.grounding import check_grounding
-from pokemon_rag.rag.sufficiency import check_context_sufficiency
 from pokemon_rag.rag.retrieval import retrieve, retrieve_retry_context
 from pokemon_rag.graph.router import route_question
 from pokemon_rag.structured.query_engine import query_structured_data
@@ -318,40 +317,6 @@ def build_hybrid_context(state: dict) -> dict:
 
     context = "\n\n==========\n\n".join(parts)
     return {"rag_context": context, "context_time": time.perf_counter() - start}
-
-
-
-def context_sufficiency_check(state: dict) -> dict:
-    vlog(state, "\n[CONTEXT SUFFICIENCY]")
-    result = check_context_sufficiency(
-        question=state["question"],
-        context=state.get("rag_context", ""),
-    )
-
-    if state.get("verbose", False):
-        print(f"Décision : {'SUFFICIENT' if result['sufficient'] else 'INSUFFICIENT'}")
-        print(f"Raison   : {result['reason']}")
-        print(f"Temps    : {result['time']:.3f} s")
-
-    return {
-        "context_sufficient": result["sufficient"],
-        "sufficiency_reason": result["reason"],
-        "sufficiency_time": result["time"],
-    }
-
-
-def finalize_insufficient(state: dict) -> dict:
-    reason = state.get("sufficiency_reason", "")
-    return {
-        "answer": (
-            "Je ne dispose pas d'un contexte documentaire suffisant pour répondre "
-            "correctement à cette question."
-        ),
-        "grounding_decision": "INSUFFICIENT",
-        "grounding_reason": reason,
-        "llm_time": 0.0,
-        "grounding_time": 0.0,
-    }
 
 def grounding_check(state: dict) -> dict:
     question = state["question"]

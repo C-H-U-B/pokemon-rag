@@ -9,8 +9,6 @@ from pokemon_rag.graph.nodes import (
     build_context,
     build_hybrid_context,
     call_main_llm,
-    context_sufficiency_check,
-    finalize_insufficient,
     format_structured_answer,
     grounding_check,
     reject_multi_question,
@@ -45,9 +43,6 @@ class PokemonState(TypedDict, total=False):
     structured_execution_time: float
     structured_format_time: float
     context_time: float
-    context_sufficient: bool
-    sufficiency_reason: str
-    sufficiency_time: float
     llm_time: float
     grounding_decision: str
     grounding_reason: str
@@ -74,14 +69,6 @@ def route_after_retry_retrieval(state: PokemonState) -> str:
     return "hybrid" if state.get("route") == "HYBRID" else "rag"
 
 
-def route_after_sufficiency(state: PokemonState) -> str:
-    if state.get("context_sufficient", False):
-        return "generate"
-    if state.get("retry_count", 0) < 1:
-        return "retry_retrieval"
-    return "fail"
-
-
 def route_after_grounding(state: PokemonState) -> str:
     decision = state.get("grounding_decision")
     if decision == "PASS":
@@ -105,8 +92,6 @@ builder.add_node("retrieve_documents", retrieve_documents)
 builder.add_node("retrieve_structured_data", retrieve_structured_data)
 builder.add_node("build_context", build_context)
 builder.add_node("build_hybrid_context", build_hybrid_context)
-builder.add_node("context_sufficiency_check", context_sufficiency_check)
-builder.add_node("finalize_insufficient", finalize_insufficient)
 builder.add_node("format_structured_answer", format_structured_answer)
 builder.add_node("main_llm", call_main_llm)
 builder.add_node("grounding_check", grounding_check)
@@ -146,19 +131,8 @@ builder.add_conditional_edges(
     },
 )
 
-builder.add_edge("build_context", "context_sufficiency_check")
-builder.add_edge("build_hybrid_context", "context_sufficiency_check")
-
-builder.add_conditional_edges(
-    "context_sufficiency_check",
-    route_after_sufficiency,
-    {
-        "generate": "main_llm",
-        "retry_retrieval": "retry_retrieval",
-        "fail": "finalize_insufficient",
-    },
-)
-builder.add_edge("finalize_insufficient", END)
+builder.add_edge("build_context", "main_llm")
+builder.add_edge("build_hybrid_context", "main_llm")
 
 builder.add_conditional_edges(
     "retry_retrieval",
@@ -213,7 +187,6 @@ def print_answer(result: PokemonState, total_time: float) -> None:
             print(f"  ↳ Format  : {result.get('structured_format_time', 0.0):.6f} s")
     if result.get("route") != "STRUCTURED":
         print(f"Context     : {result.get('context_time', 0.0):.3f} s")
-        print(f"Sufficiency : {result.get('sufficiency_time', 0.0):.3f} s")
         print(f"LLM         : {result.get('llm_time', 0.0):.3f} s")
         print(f"Grounding   : {result.get('grounding_time', 0.0):.3f} s")
     if result.get("retry_llm_time", 0.0):
@@ -221,9 +194,6 @@ def print_answer(result: PokemonState, total_time: float) -> None:
     print(f"TOTAL       : {total_time:.3f} s")
     print("-" * 84)
 
-    if "context_sufficient" in result:
-        label = "SUFFICIENT" if result["context_sufficient"] else "INSUFFICIENT"
-        print(f"Suffisance finale : {label} — {result.get('sufficiency_reason', '')}")
     if result.get("grounding_decision"):
         print(
             f"Grounding final : {result['grounding_decision']} — "

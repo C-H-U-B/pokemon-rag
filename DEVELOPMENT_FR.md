@@ -547,3 +547,33 @@ Cette approche poursuit le même principe que le Fast Router : réserver
 les modèles aux situations où leur capacité d'interprétation apporte
 réellement quelque chose.
 
+------------------------------------------------------------------------
+
+## 20. Suppression du Sufficiency Checker
+
+Le pipeline RAG utilisait jusqu'ici un contrôle de suffisance du contexte avant l'appel au modèle principal. Ce contrôle nécessitait un appel LLM supplémentaire et faisait en partie doublon avec le Grounding Checker exécuté après génération.
+
+Le Grounding Checker distingue déjà plusieurs situations :
+
+- `PASS` : la réponse est correctement supportée par le contexte ;
+- `INSUFFICIENT` : le contexte récupéré ne permet pas de répondre correctement ;
+- `UNSUPPORTED` : certaines affirmations de la réponse ne sont pas supportées par le contexte ;
+- `CONTRADICTION` : la réponse contredit le contexte.
+
+Le Sufficiency Checker a donc été retiré du chemin d'exécution RAG et HYBRID.
+
+Le pipeline devient :
+
+Retrieval → Construction du contexte → Génération → Grounding
+
+Le Grounding Checker devient ainsi le mécanisme central permettant de déterminer si la réponse peut être acceptée ou si un retry est nécessaire.
+
+En particulier :
+
+- `INSUFFICIENT` déclenche un nouveau retrieval ;
+- `UNSUPPORTED` ou `CONTRADICTION` déclenchent une nouvelle génération à partir du contexte existant ;
+- `PASS` termine normalement l'exécution.
+
+Des tests d'intégration du graphe ont été ajoutés afin de vérifier les principaux chemins de retry, l'absence de boucle infinie et le maintien du scope Pokémon lors d'un nouveau retrieval.
+
+La suppression du Sufficiency Checker permet également d'éviter un appel LLM systématique avant chaque génération RAG/HYBRID.
