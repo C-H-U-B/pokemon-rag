@@ -921,3 +921,29 @@ Startup total         : 21.305 s
 Le benchmark end-to-end présente ensuite une médiane de `40.84 s` par requête et un maximum de `226.29 s`.
 
 Ces mesures montrent qu'après les travaux consacrés à la qualité fonctionnelle du pipeline, les performances constituent désormais un point mesurable à analyser. Les timings déjà exposés par les différents nœuds du graphe permettront d'identifier précisément les composants responsables de cette latence avant d'envisager des optimisations.
+## 28. Ajout de l'observabilité et du profiling du graphe
+
+Après la mise en place des benchmarks, le temps d'exécution global du graphe était mesurable, mais il restait difficile d'identifier précisément les composants responsables de la latence. Une couche d'observabilité légère a donc été ajoutée afin de suivre le parcours et les performances de chaque requête.
+
+Un module `observability/tracing.py` a été introduit pour créer une trace par exécution du graphe. Chaque trace possède un identifiant unique et conserve les principales informations utiles au diagnostic : route choisie, intent, mode du router, Pokémon identifié, décision finale du grounding, nombre de retries et temps d'exécution des différents composants.
+
+Les traces enregistrent également des informations sur le retrieval, notamment le nombre de chunks récupérés, le nombre de chunks réellement utilisés dans le contexte et la taille du contexte transmis au modèle.
+
+L'instrumentation a été intégrée directement au graphe avec un nœud d'initialisation et un nœud de finalisation commun aux différents chemins terminaux. Cette approche permet de séparer l'observabilité de la logique métier des nœuds existants.
+
+Les traces sont enregistrées au format JSONL dans le dossier `traces/`. Les fichiers générés sont exclus du versionnement. Les tests d'intégration continuent d'exécuter le mécanisme de finalisation des traces, mais l'écriture sur disque y est neutralisée afin de ne pas mélanger les traces de test avec les exécutions réelles.
+
+Plusieurs exécutions réelles ont ensuite permis de valider l'instrumentation sur les principaux chemins du graphe :
+
+- une requête `STRUCTURED` utilisant le Fast Router ;
+- une requête `RAG` scoped sur un Pokémon identifié ;
+- une requête `HYBRID` ;
+- une requête `RAG` particulièrement lente, utile pour vérifier le diagnostic des anomalies de performance.
+
+Ces premières traces ont montré que la construction du contexte et l'exécution SQL ont un coût négligeable par rapport aux appels aux modèles. Sur la requête structurée observée, l'exécution de la requête elle-même prenait environ 42 ms, alors que le parsing par modèle prenait environ 6,66 s. Sur les chemins RAG et HYBRID observés, la génération principale, le router LLM et le grounding représentaient l'essentiel du temps total.
+
+Un script `scripts/observability/analyze_traces.py` a enfin été ajouté pour agréger les traces et faciliter le profiling. Il fournit notamment les temps moyens, médians et p95, les timings par composant, des regroupements par route et mode du router, les métriques de retrieval, les retries, les décisions finales et les requêtes les plus lentes.
+
+Sur le premier échantillon de quatre traces réelles, les temps totaux observés allaient d'environ 6,76 s pour une requête `STRUCTURED` utilisant le Fast Router à environ 160,50 s pour une requête `RAG`. L'échantillon étant encore très réduit, les p95 sont explicitement présentés comme indicatifs.
+
+Cette instrumentation permet désormais de localiser les coûts d'une exécution complète plutôt que de se limiter à mesurer sa durée globale.
