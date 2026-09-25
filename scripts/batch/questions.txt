@@ -1,0 +1,19 @@
+# Une ligne non vide = une vraie question end-to-end.
+# Les lignes commençant par # sont ignorées.
+
+À quoi ressemble Gamblast ?
+Quelle est l'origine du nom de Dolman ?
+Décris Plumeline physiquement.
+À quoi ressemble Nigirigon ?
+Quelle est l'origine du nom de Krakos ?
+Décris Bekaglaçon physiquement.
+À quoi ressemble Vrombi ?
+Quelle est l'origine du nom de Bargantua ?
+Quelles capacités apprend Draïeul par montée de niveau ?
+Comment évolue Scalpereur ?
+Quelles CT peut apprendre Concombaffe ?
+Comment évolue Théffroi ?
+À quoi ressemble Miasmax ?
+Quelle est l'origine du nom de Sorcilence ?
+Décris Hexadron physiquement.
+Comment évolue Colimucus ?
