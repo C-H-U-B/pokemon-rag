@@ -1,0 +1,132 @@
+{
+  "description": "Benchmark end-to-end compact du graphe Pokémon.",
+  "n_cases": 16,
+  "status": "APPROVED",
+  "cases": [
+    {
+      "id": "S01",
+      "question": "Comment Pikachu évolue-t-il ?",
+      "expected_route": "STRUCTURED",
+      "expected_single_question": true,
+      "expected_terminal": "DETERMINISTIC",
+      "status": "APPROVED"
+    },
+    {
+      "id": "S02",
+      "question": "Quelles capacités Roitiflam apprend-il après le niveau 40 ?",
+      "expected_route": "STRUCTURED",
+      "expected_single_question": true,
+      "expected_terminal": "DETERMINISTIC",
+      "status": "APPROVED"
+    },
+    {
+      "id": "S03",
+      "question": "Quelles capacités Pikachu apprend-il par CT dans EV ?",
+      "expected_route": "STRUCTURED",
+      "expected_single_question": true,
+      "expected_terminal": "DETERMINISTIC",
+      "status": "APPROVED"
+    },
+    {
+      "id": "S04",
+      "question": "Comment Pikachu peut-il apprendre Électacle ?",
+      "expected_route": "STRUCTURED",
+      "expected_single_question": true,
+      "expected_terminal": "DETERMINISTIC",
+      "status": "APPROVED"
+    },
+    {
+      "id": "R01",
+      "question": "Pourquoi Dracaufeu recherche-t-il des adversaires plus forts que lui ?",
+      "expected_route": "RAG",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "R02",
+      "question": "Comment les Pikachu sauvages communiquent-ils entre eux ?",
+      "expected_route": "RAG",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "R03",
+      "question": "À quoi sert la grande feuille sur la tête de Germignon ?",
+      "expected_route": "RAG",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "R04",
+      "question": "D'où vient le nom français de Katagami ?",
+      "expected_route": "RAG",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "R05",
+      "question": "Pourquoi Terhal était-il particulièrement difficile à capturer avant la huitième génération ?",
+      "expected_route": "RAG",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "H01",
+      "question": "Parle-moi de Pikachu.",
+      "expected_route": "HYBRID",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "H02",
+      "question": "Présente-moi Mewtwo.",
+      "expected_route": "HYBRID",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "H03",
+      "question": "Qu'est-ce qui rend Dracaufeu particulier ?",
+      "expected_route": "HYBRID",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "H04",
+      "question": "Parle-moi de Noadkoko d'Alola.",
+      "expected_route": "HYBRID",
+      "expected_single_question": true,
+      "expected_terminal": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "M01",
+      "question": "Comment Pikachu évolue-t-il et quelles CT apprend-il dans EV ?",
+      "expected_single_question": false,
+      "expected_terminal": "NOT_RUN",
+      "status": "APPROVED"
+    },
+    {
+      "id": "M02",
+      "question": "Quels sont les talents de Dracaufeu et où peut-on le capturer ?",
+      "expected_single_question": false,
+      "expected_terminal": "NOT_RUN",
+      "status": "APPROVED"
+    },
+    {
+      "id": "M03",
+      "question": "Donne les statistiques de Pikachu et explique son évolution.",
+      "expected_single_question": false,
+      "expected_terminal": "NOT_RUN",
+      "status": "APPROVED"
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "description": "Jeu de référence manuel pour le benchmark du routeur.",
+  "n_cases": 30,
+  "status": "APPROVED",
+  "cases": [
+    {
+      "id": "S01",
+      "question": "Comment Pikachu évolue-t-il ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S02",
+      "question": "Quelles capacités Pikachu apprend-il par CT dans EV ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S03",
+      "question": "Quelles capacités Roitiflam apprend-il après le niveau 40 ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S04",
+      "question": "Comment Pikachu peut-il apprendre Électacle ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S05",
+      "question": "Quels sont les types de Dracaufeu ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S06",
+      "question": "Quels sont les talents de Dracaufeu ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S07",
+      "question": "Quelles attaques Bulbizarre apprend-il au niveau 20 ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "S08",
+      "question": "Par quelles méthodes Évoli peut-il apprendre Morsure ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R01",
+      "question": "Pourquoi Dracaufeu recherche-t-il des adversaires plus forts que lui ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R02",
+      "question": "Comment les Pikachu sauvages communiquent-ils entre eux ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R03",
+      "question": "À quoi sert la grande feuille sur la tête de Germignon ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R04",
+      "question": "Explique le rôle de la musique dans le comportement de Badabouin.",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R05",
+      "question": "D'où vient le nom français de Katagami ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R06",
+      "question": "Que s'est-il passé lorsque Steelix a été accidentellement mis en colère par la Team Rocket ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R07",
+      "question": "Quel est le rôle de Raichu d'Alola dans Pokémon UNITE ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "R08",
+      "question": "Pourquoi Terhal était-il particulièrement difficile à capturer avant la huitième génération ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H01",
+      "question": "Parle-moi de Pikachu.",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H02",
+      "question": "Qu'est-ce qui rend Dracaufeu particulier ?",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H03",
+      "question": "Présente-moi Mewtwo.",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H04",
+      "question": "Qu'est-ce qui est intéressant chez Éthernatos ?",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H05",
+      "question": "Parle-moi de Noadkoko d'Alola.",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "H06",
+      "question": "Quelles sont les particularités de Méga-Altaria ?",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "M01",
+      "question": "Comment Pikachu évolue-t-il et quelles CT apprend-il dans EV ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": false,
+      "status": "APPROVED"
+    },
+    {
+      "id": "M02",
+      "question": "Quels sont les talents de Dracaufeu et où peut-on le capturer ?",
+      "expected_route": "HYBRID",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": false,
+      "status": "APPROVED"
+    },
+    {
+      "id": "M03",
+      "question": "Donne les statistiques de Pikachu et explique son évolution.",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": false,
+      "status": "APPROVED"
+    },
+    {
+      "id": "M04",
+      "question": "Pourquoi Dracaufeu recherche-t-il des adversaires forts et comment Pikachu évolue-t-il ?",
+      "expected_route": "HYBRID",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": false,
+      "status": "APPROVED"
+    },
+    {
+      "id": "E01",
+      "question": "pikachu il evolue comment ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "E02",
+      "question": "Pikachu peut apprendre quoi par machine dans Écarlate et Violet ?",
+      "expected_route": "STRUCTURED",
+      "expected_intent": "STRUCTURED_QUERY",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "E03",
+      "question": "Pourquoi Mewtwo a cette apparence ?",
+      "expected_route": "RAG",
+      "expected_intent": "DOCUMENT_SEARCH",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    },
+    {
+      "id": "E04",
+      "question": "Raconte-moi ce qu'on sait sur Zorua.",
+      "expected_route": "HYBRID",
+      "expected_intent": "PROFILE",
+      "expected_single_question": true,
+      "status": "APPROVED"
+    }
+  ]
+}

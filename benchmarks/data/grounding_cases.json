@@ -1,0 +1,207 @@
+{
+  "description": "Jeu de référence manuel pour le benchmark du grounding checker.",
+  "n_cases": 25,
+  "status": "APPROVED",
+  "cases": [
+    {
+      "id": "P01",
+      "question": "À quel niveau X apprend-il A ?",
+      "context": "X apprend A au niveau 20.",
+      "answer": "X apprend A au niveau 20.",
+      "expected_decision": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "P02",
+      "question": "Comment X évolue-t-il ?",
+      "context": "X évolue en Y avec une Pierre Lune.",
+      "answer": "X évolue en Y avec une Pierre Lune.",
+      "expected_decision": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "P03",
+      "question": "Quels sont les types de X ?",
+      "context": "X est de type Feu et Vol.",
+      "answer": "X est de type Feu et Vol.",
+      "expected_decision": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "P04",
+      "question": "Quelles capacités X apprend-il après le niveau 30 ?",
+      "context": "X apprend A au niveau 35 et B au niveau 42.",
+      "answer": "Après le niveau 30, X apprend A et B.",
+      "expected_decision": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "P05",
+      "question": "Pourquoi X brille-t-il ?",
+      "context": "X brille parce que son corps produit une substance lumineuse.",
+      "answer": "X brille car son corps produit une substance lumineuse.",
+      "expected_decision": "PASS",
+      "status": "APPROVED"
+    },
+    {
+      "id": "I01",
+      "question": "Comment X évolue-t-il ?",
+      "context": "X possède une évolution nommée Y.",
+      "answer": "X évolue avec une Pierre Lune.",
+      "expected_decision": "INSUFFICIENT",
+      "status": "APPROVED"
+    },
+    {
+      "id": "I02",
+      "question": "Pourquoi X brille-t-il ?",
+      "context": "X brille fortement pendant la nuit.",
+      "answer": "X brille pour attirer ses partenaires.",
+      "expected_decision": "INSUFFICIENT",
+      "status": "APPROVED"
+    },
+    {
+      "id": "I03",
+      "question": "À quel niveau X apprend-il A ?",
+      "context": "X peut apprendre A.",
+      "answer": "X apprend A au niveau 20.",
+      "expected_decision": "INSUFFICIENT",
+      "status": "APPROVED"
+    },
+    {
+      "id": "I04",
+      "question": "Où peut-on trouver X ?",
+      "context": "X est un Pokémon rare.",
+      "answer": "On trouve X dans la Forêt Nord.",
+      "expected_decision": "INSUFFICIENT",
+      "status": "APPROVED"
+    },
+    {
+      "id": "I05",
+      "question": "Quelles sont toutes les capacités de X après le niveau 30 ?",
+      "context": "X apprend A au niveau 35. D'autres capacités sont apprises plus tard.",
+      "answer": "X apprend A au niveau 35.",
+      "expected_decision": "INSUFFICIENT",
+      "status": "APPROVED"
+    },
+    {
+      "id": "C01",
+      "question": "À quel niveau X apprend-il A ?",
+      "context": "X apprend A au niveau 20.",
+      "answer": "X apprend A au niveau 25.",
+      "expected_decision": "CONTRADICTION",
+      "status": "APPROVED"
+    },
+    {
+      "id": "C02",
+      "question": "Comment X évolue-t-il ?",
+      "context": "X évolue en Y avec une Pierre Lune.",
+      "answer": "X évolue en Y par échange.",
+      "expected_decision": "CONTRADICTION",
+      "status": "APPROVED"
+    },
+    {
+      "id": "C03",
+      "question": "Quel est le type de X ?",
+      "context": "X est uniquement de type Eau.",
+      "answer": "X est de type Feu.",
+      "expected_decision": "CONTRADICTION",
+      "status": "APPROVED"
+    },
+    {
+      "id": "C04",
+      "question": "Quelles capacités X apprend-il après le niveau 30 ?",
+      "context": "X apprend A au niveau 35 et B au niveau 42.",
+      "answer": "X apprend A au niveau 25 et B au niveau 42.",
+      "expected_decision": "CONTRADICTION",
+      "status": "APPROVED"
+    },
+    {
+      "id": "C05",
+      "question": "X est-il plus rapide que Y ?",
+      "context": "X a une Vitesse de 100. Y a une Vitesse de 80.",
+      "answer": "Non, Y est plus rapide que X.",
+      "expected_decision": "CONTRADICTION",
+      "status": "APPROVED"
+    },
+    {
+      "id": "U01",
+      "question": "À quel niveau X apprend-il A ?",
+      "context": "X apprend A au niveau 20.",
+      "answer": "X apprend A au niveau 20 et cette attaque est sa capacité la plus puissante.",
+      "expected_decision": "UNSUPPORTED",
+      "status": "APPROVED"
+    },
+    {
+      "id": "U02",
+      "question": "Comment X évolue-t-il ?",
+      "context": "X évolue en Y avec une Pierre Lune.",
+      "answer": "X évolue en Y avec une Pierre Lune, uniquement pendant la nuit.",
+      "expected_decision": "UNSUPPORTED",
+      "status": "APPROVED"
+    },
+    {
+      "id": "U03",
+      "question": "Quel est le type de X ?",
+      "context": "X est de type Eau.",
+      "answer": "X est de type Eau et vit exclusivement dans les océans.",
+      "expected_decision": "UNSUPPORTED",
+      "status": "APPROVED"
+    },
+    {
+      "id": "U04",
+      "question": "Pourquoi X brille-t-il ?",
+      "context": "X brille parce que son corps produit une substance lumineuse.",
+      "answer": "X brille parce que son corps produit une substance lumineuse, visible à dix kilomètres.",
+      "expected_decision": "UNSUPPORTED",
+      "status": "APPROVED"
+    },
+    {
+      "id": "U05",
+      "question": "Où vit X ?",
+      "context": "X vit dans les forêts tempérées.",
+      "answer": "X vit dans les forêts tempérées et se nourrit uniquement de baies rouges.",
+      "expected_decision": "UNSUPPORTED",
+      "status": "APPROVED"
+    },
+    {
+      "id": "N01",
+      "question": "Quels sont les types de X ?",
+      "context": "X est de type Feu et Vol.",
+      "answer": "X est de type Feu.",
+      "expected_decision": "INCOMPLETE",
+      "status": "APPROVED"
+    },
+    {
+      "id": "N02",
+      "question": "Quelles capacités X apprend-il après le niveau 30 ?",
+      "context": "X apprend A au niveau 35 et B au niveau 42.",
+      "answer": "X apprend A au niveau 35.",
+      "expected_decision": "INCOMPLETE",
+      "status": "APPROVED"
+    },
+    {
+      "id": "N03",
+      "question": "Quelles sont les deux conditions nécessaires pour faire évoluer X ?",
+      "context": "X évolue s'il tient l'objet A et gagne un niveau pendant la nuit.",
+      "answer": "X doit tenir l'objet A.",
+      "expected_decision": "INCOMPLETE",
+      "status": "APPROVED"
+    },
+    {
+      "id": "N04",
+      "question": "Compare les Vitesses de X et Y.",
+      "context": "X a une Vitesse de 100. Y a une Vitesse de 80.",
+      "answer": "X a une Vitesse de 100.",
+      "expected_decision": "INCOMPLETE",
+      "status": "APPROVED"
+    },
+    {
+      "id": "N05",
+      "question": "Donne le type et le talent de X.",
+      "context": "X est de type Eau et possède le talent Torrent.",
+      "answer": "X est de type Eau.",
+      "expected_decision": "INCOMPLETE",
+      "status": "APPROVED"
+    }
+  ]
+}

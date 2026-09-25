@@ -786,3 +786,138 @@ Ces résultats fournissent une première baseline mesurée du retrieval sur le c
 Ils ne justifient pas à ce stade une modification du pipeline de retrieval : la bonne section est systématiquement disponible dans le Top-3 et aucune question du benchmark n'échoue en Top-5.
 
 Les performances temporelles montrent en revanche un coût moyen d'environ 2,25 secondes par requête une fois le moteur initialisé. Cette mesure servira de référence pour les futures optimisations de performances.
+
+## 25. Benchmark du router
+
+Après la validation du benchmark du retrieval, un benchmark dédié au router a été ajouté afin de mesurer sa capacité à sélectionner correctement le chemin d'exécution du graphe.
+
+Le jeu de référence contient 30 requêtes couvrant les trois routes disponibles :
+
+- `STRUCTURED` pour les informations pouvant être obtenues depuis `pokemon.db` ;
+- `RAG` pour les recherches documentaires dans le corpus Poképédia ;
+- `HYBRID` lorsque les deux sources sont nécessaires.
+
+Des requêtes contenant plusieurs besoins informationnels ont également été ajoutées afin de vérifier la détection des questions multiples.
+
+Le benchmark mesure séparément :
+
+- la route choisie ;
+- l'intent détecté ;
+- la détection d'une question unique ;
+- la correspondance exacte de l'ensemble de ces décisions ;
+- le mode de routage utilisé (`FAST` ou `LLM`) ;
+- le temps d'exécution.
+
+Résultats obtenus :
+
+```text
+Cas               : 30
+Route accuracy    : 0.900 (27/30)
+Intent accuracy   : 0.900 (27/30)
+Single accuracy   : 1.000 (30/30)
+Exact accuracy    : 0.867 (26/30)
+Modes             : {'FAST': 9, 'LLM': 21}
+Temps moyen       : 7337.1 ms
+Temps médian      : 9453.1 ms
+Erreurs runtime   : 0
+```
+
+Les erreurs restantes concernent principalement des différences de classification entre `PROFILE`, `DOCUMENT_SEARCH`, `STRUCTURED` et `HYBRID`.
+
+La détection des requêtes contenant plusieurs besoins est correcte sur l'ensemble du benchmark. C'est particulièrement important car ces requêtes sont rejetées avant l'exécution du reste du pipeline.
+
+Aucune modification supplémentaire du router n'a été effectuée à ce stade. Le benchmark sert désormais de baseline pour mesurer de futures modifications.
+
+## 26. Benchmark du grounding
+
+Un benchmark spécifique a ensuite été ajouté pour évaluer le grounding checker indépendamment du retrieval et de la génération de réponse.
+
+Le jeu contient 25 cas contrôlés, répartis équitablement entre les cinq décisions possibles :
+
+- `PASS` ;
+- `INSUFFICIENT` ;
+- `CONTRADICTION` ;
+- `UNSUPPORTED` ;
+- `INCOMPLETE`.
+
+Les contextes et réponses sont volontairement synthétiques afin d'isoler le raisonnement du checker de la qualité du retrieval et des connaissances Pokémon du modèle.
+
+Résultats obtenus :
+
+```text
+Cas               : 25
+Accuracy          : 0.800 (20/25)
+PASS              : 0.800 (4/5)
+INSUFFICIENT      : 0.800 (4/5)
+CONTRADICTION     : 0.800 (4/5)
+UNSUPPORTED       : 1.000 (5/5)
+INCOMPLETE        : 0.600 (3/5)
+Temps moyen       : 6321.0 ms
+Temps médian      : 5887.0 ms
+```
+
+Les erreurs observées concernent principalement deux difficultés.
+
+La première est la distinction entre l'insuffisance du contexte et une réponse contenant une information non supportée. Dans certains cas, le modèle classe directement une affirmation comme `UNSUPPORTED` alors que le contexte ne contient pas l'information nécessaire pour répondre à la question et devrait donc conduire à `INSUFFICIENT`.
+
+La seconde concerne la complétude. Le modèle peut accepter avec `PASS` une réponse partielle alors que plusieurs éléments sont explicitement demandés et présents dans le contexte. Cette difficulté apparaît dans le score plus faible de `INCOMPLETE`.
+
+Des erreurs ont également été observées sur certaines contraintes numériques simples, par exemple l'interprétation de « après le niveau 30 ».
+
+Ces résultats sont conservés comme baseline. Le prompt du grounding checker n'a pas été complexifié davantage à ce stade afin d'éviter une optimisation excessive sur un petit jeu de cas.
+
+## 27. Benchmark end-to-end du graphe
+
+Après les benchmarks isolés du retrieval, du router et du grounding, un benchmark end-to-end a été ajouté afin de vérifier le comportement du système complet.
+
+Contrairement aux benchmarks précédents, celui-ci exécute directement le graphe LangGraph avec ses composants réels.
+
+Le jeu contient 16 requêtes couvrant :
+
+- le chemin `STRUCTURED` ;
+- le chemin `RAG` ;
+- le chemin `HYBRID` ;
+- le rejet des requêtes contenant plusieurs besoins.
+
+Pour les requêtes structurées, le résultat attendu est une terminaison `DETERMINISTIC`, puisque la réponse est produite directement à partir des données structurées sans passer par le Main LLM ni par le grounding checker.
+
+Pour les requêtes RAG et HYBRID, le résultat attendu est une terminaison `PASS` après vérification du grounding.
+
+Les requêtes multiples doivent quant à elles terminer en `NOT_RUN`, le pipeline étant arrêté avant retrieval.
+
+Résultats obtenus :
+
+```text
+Cas               : 16
+Route accuracy    : 1.000 (13/13)
+Single accuracy   : 1.000 (16/16)
+Terminal accuracy : 1.000 (16/16)
+Exact accuracy    : 1.000 (16/16)
+Routes obtenues   : {'STRUCTURED': 4, 'RAG': 5, 'HYBRID': 7}
+Décisions finales : {'DETERMINISTIC': 4, 'PASS': 9, 'NOT_RUN': 3}
+Retries retrieval : 1
+Retries génération: 0
+Temps moyen       : 54.13 s
+Temps médian      : 40.84 s
+Temps min/max     : 0.05 / 226.29 s
+```
+
+Les 16 cas atteignent le comportement terminal attendu.
+
+Un retry du retrieval a été déclenché pendant le benchmark et la requête concernée a tout de même terminé avec succès. Aucun retry de génération n'a été nécessaire.
+
+Le benchmark a également mis en évidence le coût important du pipeline complet.
+
+Lors de son initialisation, le système RAG a notamment mesuré :
+
+```text
+Chargement embeddings : 9.298 s
+Chargement reranker   : 5.390 s
+Chargement corpus     : 4.991 s
+Construction BM25     : 0.865 s
+Startup total         : 21.305 s
+```
+
+Le benchmark end-to-end présente ensuite une médiane de `40.84 s` par requête et un maximum de `226.29 s`.
+
+Ces mesures montrent qu'après les travaux consacrés à la qualité fonctionnelle du pipeline, les performances constituent désormais un point mesurable à analyser. Les timings déjà exposés par les différents nœuds du graphe permettront d'identifier précisément les composants responsables de cette latence avant d'envisager des optimisations.
