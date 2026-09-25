@@ -21,6 +21,19 @@ def vlog(state: dict, *args) -> None:
         print(*args)
 
 
+def _response_usage(response) -> dict:
+    """Extrait les compteurs de tokens exposés par l'API OpenAI-compatible."""
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+    return {
+        "prompt_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
+        "completion_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
+        "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
+    }
+
+
 
 def route_query(state: dict) -> dict:
     vlog(state, "\n[ROUTER]")
@@ -341,6 +354,10 @@ def grounding_check(state: dict) -> dict:
         "grounding_decision": result["decision"],
         "grounding_reason": result["reason"],
         "grounding_time": result["time"],
+        "grounding_prompt_tokens": result.get("prompt_tokens", 0),
+        "grounding_completion_tokens": result.get("completion_tokens", 0),
+        "grounding_total_tokens": result.get("total_tokens", 0),
+        "grounding_tokens_per_second": result.get("tokens_per_second", 0.0),
     }
 
 def retry_answer(state: dict) -> dict:
@@ -395,17 +412,27 @@ Règles :
     )
 
     answer = response.choices[0].message.content.strip()
+    usage = _response_usage(response)
 
     elapsed = time.perf_counter() - start
+    completion_tokens = usage["completion_tokens"]
+    tokens_per_second = completion_tokens / elapsed if completion_tokens and elapsed > 0 else 0.0
 
     if state.get("verbose", False):
         print()
         print("[RETRY]")
         print(f"Nouvelle génération : {elapsed:.3f} s")
+        if completion_tokens:
+            print(f"Tokens générés      : {completion_tokens}")
+            print(f"Débit               : {tokens_per_second:.2f} tok/s")
 
     return {
         "answer": answer,
         "retry_llm_time": elapsed,
+        "retry_llm_prompt_tokens": usage["prompt_tokens"],
+        "retry_llm_completion_tokens": completion_tokens,
+        "retry_llm_total_tokens": usage["total_tokens"],
+        "retry_llm_tokens_per_second": tokens_per_second,
     }
 
 def retrieve_documents(state: dict) -> dict:
@@ -567,7 +594,14 @@ def call_main_llm(state: dict) -> dict:
     if not context:
         answer = "Je ne dispose pas de suffisamment d'informations dans les documents récupérés pour répondre."
         elapsed = time.perf_counter() - start
-        return {"answer": answer, "llm_time": elapsed}
+        return {
+            "answer": answer,
+            "llm_time": elapsed,
+            "llm_prompt_tokens": 0,
+            "llm_completion_tokens": 0,
+            "llm_total_tokens": 0,
+            "llm_tokens_per_second": 0.0,
+        }
     response = llm_client.chat.completions.create(
         model=MAIN_MODEL,
         temperature=0,
@@ -582,6 +616,23 @@ def call_main_llm(state: dict) -> dict:
         ],
     )
     answer = response.choices[0].message.content.strip()
+    usage = _response_usage(response)
+
     elapsed = time.perf_counter() - start
+    completion_tokens = usage["completion_tokens"]
+    tokens_per_second = completion_tokens / elapsed if completion_tokens and elapsed > 0 else 0.0
+
     vlog(state, f"Génération : {elapsed:.3f} s")
-    return {"answer": answer, "llm_time": elapsed}
+    if state.get("verbose", False) and completion_tokens:
+        print(f"Tokens prompt  : {usage['prompt_tokens']}")
+        print(f"Tokens générés : {completion_tokens}")
+        print(f"Débit          : {tokens_per_second:.2f} tok/s")
+
+    return {
+        "answer": answer,
+        "llm_time": elapsed,
+        "llm_prompt_tokens": usage["prompt_tokens"],
+        "llm_completion_tokens": completion_tokens,
+        "llm_total_tokens": usage["total_tokens"],
+        "llm_tokens_per_second": tokens_per_second,
+    }

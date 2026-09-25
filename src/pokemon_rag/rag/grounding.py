@@ -214,6 +214,8 @@ def check_grounding(
 ) -> dict:
     start = time.perf_counter()
 
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
     user_prompt = f"""
 QUESTION UTILISATEUR
 --------------------
@@ -243,6 +245,14 @@ RÉPONSE À VÉRIFIER
                 },
             ],
         )
+
+        response_usage = getattr(response, "usage", None)
+        if response_usage is not None:
+            usage = {
+                "prompt_tokens": int(getattr(response_usage, "prompt_tokens", 0) or 0),
+                "completion_tokens": int(getattr(response_usage, "completion_tokens", 0) or 0),
+                "total_tokens": int(getattr(response_usage, "total_tokens", 0) or 0),
+            }
 
         raw = response.choices[0].message.content.strip()
 
@@ -308,10 +318,16 @@ RÉPONSE À VÉRIFIER
         reason = f"Échec du grounding checker : {exc}"
 
     elapsed = time.perf_counter() - start
+    completion_tokens = usage["completion_tokens"]
+    tokens_per_second = completion_tokens / elapsed if completion_tokens and elapsed > 0 else 0.0
 
     return {
         "decision": decision,
         "grounded": decision == "PASS",
         "reason": reason,
         "time": elapsed,
+        "prompt_tokens": usage["prompt_tokens"],
+        "completion_tokens": completion_tokens,
+        "total_tokens": usage["total_tokens"],
+        "tokens_per_second": tokens_per_second,
     }

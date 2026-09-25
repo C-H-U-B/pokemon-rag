@@ -37,6 +37,9 @@ def create_trace(question: str) -> dict[str, Any]:
             "context_chunks": 0,
             "context_chars": 0,
         },
+        "llm": {},
+        "grounding": {},
+        "retry_llm": {},
         "retries": {
             "retrieval": 0,
             "generation": 0,
@@ -81,6 +84,26 @@ def set_retrieval_metrics(
         "retrieved_chunks": int(retrieved_chunks),
         "context_chunks": int(context_chunks),
         "context_chars": int(context_chars),
+    }
+
+
+def set_llm_metrics(
+    trace: dict[str, Any],
+    name: str,
+    *,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
+    tokens_per_second: float = 0.0,
+) -> None:
+    """
+    Enregistre les métriques d'un appel LLM.
+    """
+    trace[name] = {
+        "prompt_tokens": int(prompt_tokens),
+        "completion_tokens": int(completion_tokens),
+        "total_tokens": int(total_tokens),
+        "tokens_per_second": float(tokens_per_second),
     }
 
 
@@ -156,6 +179,11 @@ def format_trace(trace: dict[str, Any]) -> str:
     timings = trace.get("timings", {})
     retrieval = trace.get("retrieval", {})
     retries = trace.get("retries", {})
+    llm_metrics = (
+        ("MAIN LLM", trace.get("llm", {})),
+        ("GROUNDING LLM", trace.get("grounding", {})),
+        ("RETRY LLM", trace.get("retry_llm", {})),
+    )
 
     lines = [
         "=" * 72,
@@ -189,6 +217,26 @@ def format_trace(trace: dict[str, Any]) -> str:
                 f"{retrieval.get('context_chars', 0):,} caractères"
             ),
             "",
+            "LLM",
+        ]
+    )
+
+    for label, metrics in llm_metrics:
+        if not metrics:
+            continue
+        lines.extend(
+            [
+                label,
+                f"Prompt tokens      : {metrics.get('prompt_tokens', 0)}",
+                f"Completion tokens  : {metrics.get('completion_tokens', 0)}",
+                f"Total tokens       : {metrics.get('total_tokens', 0)}",
+                f"Débit              : {metrics.get('tokens_per_second', 0.0):.2f} tok/s",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
             "RETRIES",
             f"Retrieval          : {retries.get('retrieval', 0)}",
             f"Génération         : {retries.get('generation', 0)}",

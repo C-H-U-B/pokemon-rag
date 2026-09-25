@@ -23,6 +23,7 @@ from pokemon_rag.observability.tracing import (
     create_trace,
     finalize_trace,
     save_trace,
+    set_llm_metrics,
     set_retrieval_metrics,
     set_retry_counts,
     set_timing,
@@ -56,12 +57,24 @@ class PokemonState(TypedDict, total=False):
     structured_format_time: float
     context_time: float
     llm_time: float
+    llm_prompt_tokens: int
+    llm_completion_tokens: int
+    llm_total_tokens: int
+    llm_tokens_per_second: float
     grounding_decision: str
     grounding_reason: str
     grounding_time: float
+    grounding_prompt_tokens: int
+    grounding_completion_tokens: int
+    grounding_total_tokens: int
+    grounding_tokens_per_second: float
     retrieval_retry_count: int
     generation_retry_count: int
     retry_llm_time: float
+    retry_llm_prompt_tokens: int
+    retry_llm_completion_tokens: int
+    retry_llm_total_tokens: int
+    retry_llm_tokens_per_second: float
     trace: dict[str, Any]
 
 
@@ -120,6 +133,36 @@ def finalize_observability(state: PokemonState) -> dict:
         retrieval=state.get("retrieval_retry_count", 0),
         generation=state.get("generation_retry_count", 0),
     )
+
+    if state.get("llm_time") is not None:
+        set_llm_metrics(
+            trace,
+            "llm",
+            prompt_tokens=state.get("llm_prompt_tokens", 0),
+            completion_tokens=state.get("llm_completion_tokens", 0),
+            total_tokens=state.get("llm_total_tokens", 0),
+            tokens_per_second=state.get("llm_tokens_per_second", 0.0),
+        )
+
+    if state.get("grounding_time") is not None:
+        set_llm_metrics(
+            trace,
+            "grounding",
+            prompt_tokens=state.get("grounding_prompt_tokens", 0),
+            completion_tokens=state.get("grounding_completion_tokens", 0),
+            total_tokens=state.get("grounding_total_tokens", 0),
+            tokens_per_second=state.get("grounding_tokens_per_second", 0.0),
+        )
+
+    if state.get("retry_llm_time") is not None:
+        set_llm_metrics(
+            trace,
+            "retry_llm",
+            prompt_tokens=state.get("retry_llm_prompt_tokens", 0),
+            completion_tokens=state.get("retry_llm_completion_tokens", 0),
+            total_tokens=state.get("retry_llm_total_tokens", 0),
+            tokens_per_second=state.get("retry_llm_tokens_per_second", 0.0),
+        )
 
     finalize_trace(trace)
     save_trace(trace)
@@ -278,7 +321,17 @@ def print_answer(result: PokemonState, total_time: float) -> None:
     if result.get("route") != "STRUCTURED":
         print(f"Context     : {result.get('context_time', 0.0):.3f} s")
         print(f"LLM         : {result.get('llm_time', 0.0):.3f} s")
+        if result.get("llm_completion_tokens", 0):
+            print(
+                f"  ↳ Tokens  : {result.get('llm_completion_tokens', 0)} générés | "
+                f"{result.get('llm_tokens_per_second', 0.0):.2f} tok/s"
+            )
         print(f"Grounding   : {result.get('grounding_time', 0.0):.3f} s")
+        if result.get("grounding_completion_tokens", 0):
+            print(
+                f"  ↳ Tokens  : {result.get('grounding_completion_tokens', 0)} générés | "
+                f"{result.get('grounding_tokens_per_second', 0.0):.2f} tok/s"
+            )
     if result.get("retry_llm_time", 0.0):
         print(f"Retry LLM   : {result.get('retry_llm_time', 0.0):.3f} s")
     print(f"TOTAL       : {total_time:.3f} s")

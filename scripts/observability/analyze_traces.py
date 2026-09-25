@@ -194,6 +194,82 @@ def print_group_summary(
         )
 
 
+def get_llm_metrics(
+    trace: dict[str, Any],
+    name: str,
+) -> dict[str, Any] | None:
+    """Retourne les métriques LLM d'une trace récente, sinon None."""
+    metrics = trace.get(name)
+    if not isinstance(metrics, dict):
+        return None
+
+    if not any(
+        key in metrics
+        for key in (
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "tokens_per_second",
+        )
+    ):
+        return None
+
+    return metrics
+
+
+def print_llm_summary(
+    title: str,
+    traces: list[dict[str, Any]],
+    name: str,
+) -> None:
+    """Résume les volumes de tokens et le débit des traces instrumentées."""
+    measured = []
+
+    for trace in traces:
+        metrics = get_llm_metrics(trace, name)
+        if metrics is None:
+            continue
+
+        completion_tokens = int(metrics.get("completion_tokens") or 0)
+        tokens_per_second = float(metrics.get("tokens_per_second") or 0.0)
+
+        # Une ancienne trace ou un appel sans usage exploitable ne doit pas
+        # polluer les statistiques de débit avec des zéros artificiels.
+        if completion_tokens <= 0 or tokens_per_second <= 0:
+            continue
+
+        measured.append(metrics)
+
+    print(title)
+    print(f"  traces mesurées      : {len(measured)}/{len(traces)}")
+
+    if not measured:
+        print("  aucune métrique de tokens exploitable")
+        return
+
+    prompt_tokens = [int(item.get("prompt_tokens") or 0) for item in measured]
+    completion_tokens = [int(item.get("completion_tokens") or 0) for item in measured]
+    total_tokens = [int(item.get("total_tokens") or 0) for item in measured]
+    throughputs = [float(item.get("tokens_per_second") or 0.0) for item in measured]
+
+    prompt_summary = summarize_values(prompt_tokens)
+    completion_summary = summarize_values(completion_tokens)
+    total_summary = summarize_values(total_tokens)
+    throughput_summary = summarize_values(throughputs)
+
+    print(f"  prompt médian        : {prompt_summary['median']:.0f} tokens")
+    print(f"  génération médiane   : {completion_summary['median']:.0f} tokens")
+    print(f"  total médian         : {total_summary['median']:.0f} tokens")
+    print(
+        f"  débit médian         : {throughput_summary['median']:.2f} tok/s"
+        f" | moyenne {throughput_summary['mean']:.2f} tok/s"
+    )
+    print(
+        f"  débit min/max        : {throughput_summary['min']:.2f}"
+        f" / {throughput_summary['max']:.2f} tok/s"
+    )
+
+
 def print_retry_summary(traces: list[dict[str, Any]]) -> None:
     retrieval_retries = [
         int((trace.get("retries") or {}).get("retrieval") or 0)
@@ -252,6 +328,17 @@ def print_slowest_traces(
         )
         print(f"      {question}")
 
+        llm = get_llm_metrics(trace, "llm")
+        if llm is not None:
+            completion_tokens = int(llm.get("completion_tokens") or 0)
+            tokens_per_second = float(llm.get("tokens_per_second") or 0.0)
+            if completion_tokens > 0 and tokens_per_second > 0:
+                print(
+                    f"      Main LLM : {completion_tokens} tokens"
+                    f" | {tokens_per_second:.2f} tok/s"
+                    f" | {format_seconds(get_timing(trace, 'main_llm'))}"
+                )
+
 
 def print_retrieval_summary(traces: list[dict[str, Any]]) -> None:
     retrieval_traces = [
@@ -307,6 +394,13 @@ def analyze_traces(
     print()
 
     print_component_summary(traces)
+    print()
+
+    print_llm_summary("Main LLM", traces, "llm")
+    print()
+    print_llm_summary("Grounding LLM", traces, "grounding")
+    print()
+    print_llm_summary("Retry LLM", traces, "retry_llm")
     print()
 
     print_group_summary("Par route", traces, "route")

@@ -921,6 +921,7 @@ Startup total         : 21.305 s
 Le benchmark end-to-end présente ensuite une médiane de `40.84 s` par requête et un maximum de `226.29 s`.
 
 Ces mesures montrent qu'après les travaux consacrés à la qualité fonctionnelle du pipeline, les performances constituent désormais un point mesurable à analyser. Les timings déjà exposés par les différents nœuds du graphe permettront d'identifier précisément les composants responsables de cette latence avant d'envisager des optimisations.
+
 ## 28. Ajout de l'observabilité et du profiling du graphe
 
 Après la mise en place des benchmarks, le temps d'exécution global du graphe était mesurable, mais il restait difficile d'identifier précisément les composants responsables de la latence. Une couche d'observabilité légère a donc été ajoutée afin de suivre le parcours et les performances de chaque requête.
@@ -947,3 +948,40 @@ Un script `scripts/observability/analyze_traces.py` a enfin été ajouté pour a
 Sur le premier échantillon de quatre traces réelles, les temps totaux observés allaient d'environ 6,76 s pour une requête `STRUCTURED` utilisant le Fast Router à environ 160,50 s pour une requête `RAG`. L'échantillon étant encore très réduit, les p95 sont explicitement présentés comme indicatifs.
 
 Cette instrumentation permet désormais de localiser les coûts d'une exécution complète plutôt que de se limiter à mesurer sa durée globale.
+
+## 29. Ajout des métriques de tokens pour les appels LLM
+
+Le profiling temporel a montré que les appels aux LLM représentent une part importante du temps d'exécution du graphe. Cependant, la durée seule ne permet pas de distinguer une génération naturellement longue d'un ralentissement du modèle.
+
+L'observabilité a donc été étendue avec des métriques liées aux tokens pour les appels au modèle principal, au grounding et aux éventuelles régénérations.
+
+Les métriques enregistrées sont :
+
+- nombre de tokens du prompt ;
+- nombre de tokens générés ;
+- nombre total de tokens ;
+- débit effectif de génération en tokens par seconde.
+
+Ces informations sont récupérées depuis les données `usage` exposées par l'API OpenAI-compatible de LM Studio. Le débit enregistré correspond au nombre de tokens générés divisé par la durée totale de l'appel. Il s'agit donc d'un débit effectif incluant notamment le traitement du prompt et les éventuels coûts de démarrage de l'appel, et non d'une mesure isolée de la vitesse de décodage.
+
+Les métriques sont propagées dans l'état du graphe puis enregistrées dans les traces JSONL par le module d'observabilité. Le script `scripts/observability/analyze_traces.py` a également été étendu afin d'analyser les volumes de tokens et les débits observés pour les différents appels LLM.
+
+La lecture des anciennes traces reste compatible : les traces créées avant l'ajout de ces métriques continuent d'être utilisées pour les statistiques existantes, mais sont ignorées pour les statistiques de tokens et de débit.
+
+Une première exécution instrumentée sur une requête RAG a permis de mesurer pour le modèle principal :
+
+- 710 tokens de prompt ;
+- 478 tokens générés ;
+- 1188 tokens au total ;
+- environ 4,78 tokens/s ;
+- environ 99,9 secondes pour l'appel.
+
+Le grounding de cette même exécution a utilisé :
+
+- 3441 tokens de prompt ;
+- 69 tokens générés ;
+- 3510 tokens au total ;
+- environ 4,73 tokens/s ;
+- environ 14,6 secondes pour l'appel.
+
+Cette instrumentation permet désormais de différencier plus précisément les requêtes lentes dues à un volume important de génération de celles associées à une baisse du débit d'inférence.
