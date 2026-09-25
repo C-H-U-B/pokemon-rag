@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -19,12 +19,24 @@ from pokemon_rag.graph.nodes import (
     route_query,
 )
 
+from pokemon_rag.observability.tracing import (
+    create_trace,
+    finalize_trace,
+    save_trace,
+    set_retrieval_metrics,
+    set_retry_counts,
+    set_timing,
+    set_trace_value,
+)
+
 
 class PokemonState(TypedDict, total=False):
     question: str
     verbose: bool
     route: str
     intent: str
+    router_mode: str | None
+    information_need: str
     pokemon: str | None
     pokemon_validated: bool
     single_question: bool
@@ -50,6 +62,69 @@ class PokemonState(TypedDict, total=False):
     retrieval_retry_count: int
     generation_retry_count: int
     retry_llm_time: float
+    trace: dict[str, Any]
+
+
+def initialize_trace(state: PokemonState) -> dict:
+    """Crée une trace au début de chaque exécution du graphe."""
+    return {"trace": create_trace(state["question"])}
+
+
+def finalize_observability(state: PokemonState) -> dict:
+    """Construit et persiste la trace finale à partir de l'état du graphe."""
+    trace = state.get("trace")
+    if trace is None:
+        trace = create_trace(state["question"])
+
+    set_trace_value(trace, "route", state.get("route"))
+    set_trace_value(trace, "intent", state.get("intent"))
+    set_trace_value(trace, "router_mode", state.get("router_mode"))
+    set_trace_value(trace, "pokemon", state.get("pokemon"))
+    set_trace_value(trace, "single_question", state.get("single_question"))
+    set_trace_value(
+        trace,
+        "grounding_decision",
+        state.get("grounding_decision"),
+    )
+
+    timing_fields = {
+        "router": "router_time",
+        "retrieval": "retrieval_time",
+        "retry_retrieval": "retry_retrieval_time",
+        "structured": "structured_time",
+        "structured_parse": "structured_parse_time",
+        "structured_execution": "structured_execution_time",
+        "structured_format": "structured_format_time",
+        "context": "context_time",
+        "main_llm": "llm_time",
+        "grounding": "grounding_time",
+        "retry_llm": "retry_llm_time",
+    }
+    for trace_name, state_name in timing_fields.items():
+        value = state.get(state_name)
+        if value is not None:
+            set_timing(trace, trace_name, value)
+
+    retrieved_documents = state.get("retrieved_documents") or []
+    context_documents = state.get("context_documents") or []
+    context = state.get("rag_context") or ""
+
+    set_retrieval_metrics(
+        trace,
+        retrieved_chunks=len(retrieved_documents),
+        context_chunks=len(context_documents),
+        context_chars=len(context),
+    )
+    set_retry_counts(
+        trace,
+        retrieval=state.get("retrieval_retry_count", 0),
+        generation=state.get("generation_retry_count", 0),
+    )
+
+    finalize_trace(trace)
+    save_trace(trace)
+
+    return {"trace": trace}
 
 
 def route_after_router(state: PokemonState) -> str:
@@ -97,6 +172,7 @@ def mark_generation_retry(state: PokemonState) -> dict:
 
 builder = StateGraph(PokemonState)
 
+builder.add_node("initialize_trace", initialize_trace)
 builder.add_node("router", route_query)
 builder.add_node("reject_multi_question", reject_multi_question)
 builder.add_node("retrieve_documents", retrieve_documents)
@@ -109,8 +185,10 @@ builder.add_node("grounding_check", grounding_check)
 builder.add_node("mark_generation_retry", mark_generation_retry)
 builder.add_node("retry_answer", retry_answer)
 builder.add_node("retry_retrieval", retry_retrieval)
+builder.add_node("finalize_observability", finalize_observability)
 
-builder.add_edge(START, "router")
+builder.add_edge(START, "initialize_trace")
+builder.add_edge("initialize_trace", "router")
 builder.add_conditional_edges(
     "router",
     route_after_router,
@@ -121,7 +199,7 @@ builder.add_conditional_edges(
         "hybrid": "retrieve_structured_data",
     },
 )
-builder.add_edge("reject_multi_question", END)
+builder.add_edge("reject_multi_question", "finalize_observability")
 
 builder.add_conditional_edges(
     "retrieve_structured_data",
@@ -131,7 +209,7 @@ builder.add_conditional_edges(
         "fast_path": "format_structured_answer",
     },
 )
-builder.add_edge("format_structured_answer", END)
+builder.add_edge("format_structured_answer", "finalize_observability")
 
 builder.add_conditional_edges(
     "retrieve_documents",
@@ -159,14 +237,15 @@ builder.add_conditional_edges(
     "grounding_check",
     route_after_grounding,
     {
-        "pass": END,
+        "pass": "finalize_observability",
         "retry_answer": "mark_generation_retry",
         "retry_retrieval": "retry_retrieval",
-        "fail": END,
+        "fail": "finalize_observability",
     },
 )
 builder.add_edge("mark_generation_retry", "retry_answer")
 builder.add_edge("retry_answer", "grounding_check")
+builder.add_edge("finalize_observability", END)
 
 graph = builder.compile()
 

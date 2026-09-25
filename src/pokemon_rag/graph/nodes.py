@@ -36,6 +36,7 @@ def route_query(state: dict) -> dict:
         "router_reason": result.get("reason", ""),
         "information_need": result.get("information_need", "") or state["question"],
         "intent": str(result.get("intent", "DOCUMENT_SEARCH")).upper(),
+        "router_mode": result.get("router_mode"),
         "pokemon": result.get("pokemon"),
         "pokemon_validated": bool(result.get("pokemon_validated", False)),
         "router_time": elapsed,

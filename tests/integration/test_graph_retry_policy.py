@@ -49,14 +49,17 @@ def _grounding(decision: str, reason: str = "test"):
 
 
 def _invoke():
-    return graph.invoke(
-        {
-            "question": "Question de test sur Pikachu",
-            "verbose": False,
-            "retrieval_retry_count": 0,
-            "generation_retry_count": 0,
-        }
-    )
+    # On conserve l'exécution réelle du nœud de finalisation tout en
+    # neutralisant l'écriture disque, qui n'appartient pas à ces tests.
+    with patch("pokemon_rag.graph.graph.save_trace"):
+        return graph.invoke(
+            {
+                "question": "Question de test sur Pikachu",
+                "verbose": False,
+                "retrieval_retry_count": 0,
+                "generation_retry_count": 0,
+            }
+        )
 
 
 def test_retrieval_retry_does_not_consume_generation_retry_budget():
@@ -151,7 +154,6 @@ def test_generation_retry_does_not_consume_retrieval_retry_budget():
     assert retry_retrieval.call_count == 1
     assert client.chat.completions.create.call_count == 3
     assert grounding.call_count == 3
-
 
 
 def test_incomplete_retries_answer_without_retrieval():

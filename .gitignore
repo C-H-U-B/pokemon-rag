@@ -36,3 +36,6 @@ data/*.db
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Observability traces
+traces/*.jsonl

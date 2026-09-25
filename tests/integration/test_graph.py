@@ -51,14 +51,18 @@ def _grounding(decision: str, reason: str = "test"):
 
 
 def _invoke():
-    return graph.invoke(
-        {
-            "question": "Question de test sur Pikachu",
-            "verbose": False,
-            "retrieval_retry_count": 0,
-            "generation_retry_count": 0,
-        }
-    )
+    # Les tests exercent bien le nœud d'observabilité, mais neutralisent
+    # uniquement son effet de bord persistant : aucun faux run ne doit
+    # polluer traces/graph_traces.jsonl.
+    with patch("pokemon_rag.graph.graph.save_trace"):
+        return graph.invoke(
+            {
+                "question": "Question de test sur Pikachu",
+                "verbose": False,
+                "retrieval_retry_count": 0,
+                "generation_retry_count": 0,
+            }
+        )
 
 
 def test_pass_stops_without_any_retry():
