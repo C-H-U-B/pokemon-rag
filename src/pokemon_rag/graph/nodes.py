@@ -10,7 +10,9 @@ from pokemon_rag.structured.query_engine import query_structured_data
 from pokemon_rag.config import DB_PATH
 
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
-MAIN_MODEL = "mn-chinofun-12b-4-heretic-i1"
+MAIN_MODEL = "qwen/qwen3-vl-8b"
+MAIN_MAX_TOKENS = 400
+RETRY_MAX_TOKENS = 300
 TOP_K = 5
 
 
@@ -403,6 +405,7 @@ Règles :
     response = llm_client.chat.completions.create(
         model=MAIN_MODEL,
         temperature=0,
+        max_tokens=RETRY_MAX_TOKENS,
         messages=[
             {
                 "role": "user",
@@ -605,13 +608,20 @@ def call_main_llm(state: dict) -> dict:
     response = llm_client.chat.completions.create(
         model=MAIN_MODEL,
         temperature=0,
+        max_tokens=MAIN_MAX_TOKENS,
         messages=[
             {"role": "system", "content":
-             "Tu es un assistant spécialisé dans le corpus Pokémon fourni. "
-             "Réponds uniquement à partir du CONTEXTE récupéré. N'utilise pas tes connaissances externes "
-             "pour compléter une information absente. Si le contexte ne permet pas de répondre correctement, "
-             "indique clairement que l'information n'est pas présente dans les documents récupérés. "
-             "Réponds en français, de manière précise et concise. N'invente aucune source."},
+            "Tu es un assistant spécialisé dans le corpus Pokémon fourni. "
+            "Réponds uniquement à partir du CONTEXTE récupéré et n'utilise pas de connaissances externes. "
+            "Réponds directement à la question en français. "
+            "Ta réponse doit couvrir toutes les variantes, formes ou catégories nécessaires pour répondre "
+            "correctement à la question. Lorsqu'il existe plusieurs variantes pertinentes, mentionne-les "
+            "toutes mais synthétise leurs détails afin d'éviter une réponse inutilement longue. "
+            "Ne développe en détail que les informations nécessaires à la question. "
+            "N'ajoute pas d'informations annexes ou non demandées. "
+            "Si le contexte ne permet pas de répondre correctement, indique clairement que l'information "
+            "n'est pas présente dans les documents récupérés. "
+            "N'invente aucune source."},
             {"role": "user", "content": f"QUESTION :\n{state['question']}\n\nCONTEXTE :\n{context}"}
         ],
     )
