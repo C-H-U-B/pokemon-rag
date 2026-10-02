@@ -1,6 +1,8 @@
 # Requêtes structurées
 
-`query_engine.py` traduit une question en plan validé puis appelle une fonction SQL prédéfinie. Le parseur rapide couvre les formulations sûres ; le modèle traite les autres formulations. La base utilisée est définie dans `config.py`.
+Deux modules se partagent le travail. `query_parser.py` traduit une question en plan : le parseur rapide couvre les formulations sûres, le modèle traite les autres. `query_engine.py` valide le plan et appelle une fonction SQL prédéfinie. La base utilisée est définie dans `config.py`.
+
+`query_engine.py` n'importe ni client LLM ni analyse de question : le serveur MCP, le guard ADK et tout appel direct aux fonctions `get_*` restent sans inférence par construction. Seul `query_parser.py` crée un client LLM, et il n'est importé que par le graphe.
 
 ## Interfaces et limites
 
@@ -10,8 +12,8 @@ les groupes de versions connus depuis SQLite et conserve la validation des plans
 La résolution des espèces et capacités reste ici, notamment la correspondance
 de Tonnerre vers l'identifiant interne `thunderbolt`. L'interface reste française.
 
-- `query_structured_data(question)` renvoie un résultat avec `error`. Toujours lire ce champ : `count == 0` peut accompagner une erreur et ne suffit pas à conclure à l'absence de données.
-- `execute_plan(plan)` valide le plan ; les fonctions `get_*` sont aussi appelées directement par MCP et peuvent lever une exception.
+- `query_parser.query_structured_data(question)` renvoie un résultat avec `error`. Toujours lire ce champ : `count == 0` peut accompagner une erreur et ne suffit pas à conclure à l'absence de données.
+- `query_engine.execute_plan(plan)` valide le plan ; les fonctions `get_*` sont aussi appelées directement par MCP et peuvent lever une exception.
 - Les bornes de niveau sont inclusives dans le plan. « Après le niveau 40 » devient donc un minimum de 41.
 - Pour les CT/CS, un jeu omis sélectionne le groupe le plus récent possédant
   des données de machines pour le Pokémon et sa forme, selon `version_groups.order`.

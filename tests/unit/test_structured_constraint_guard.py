@@ -10,7 +10,7 @@ import pytest
 
 from pokemon_rag.agent.tool_guard import before_tool_guard
 from pokemon_rag.constraints.query_constraints import (
-    extract_explicit_constraints, extract_generation, extract_move_constraints,
+    extract_generation, extract_move_constraints,
     extract_national_pokedex_number, extract_pokemon_types, extract_power_bounds,
 )
 

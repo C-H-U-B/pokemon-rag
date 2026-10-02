@@ -1,12 +1,11 @@
 from __future__ import annotations
 import sqlite3
 import time
-from pathlib import Path
 from openai import OpenAI
 from pokemon_rag.rag.grounding import check_grounding
 from pokemon_rag.rag.retrieval import retrieve, retrieve_retry_context
 from pokemon_rag.graph.router import route_question
-from pokemon_rag.structured.query_engine import query_structured_data
+from pokemon_rag.structured.query_parser import query_structured_data
 from pokemon_rag.config import DB_PATH, LLM_TIMEOUT_SECONDS, LLM_MAX_RETRIES
 
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
@@ -335,12 +334,6 @@ def format_structured_answer(state: dict) -> dict:
             "de pokemon.db ; aucun LLM de génération ou de grounding utilisé."
         ),
     }
-
-
-def build_structured_context(state: dict) -> dict:
-    start = time.perf_counter()
-    context = state.get("structured_context", "").strip()
-    return {"rag_context": context, "context_time": time.perf_counter() - start}
 
 
 def build_hybrid_context(state: dict) -> dict:

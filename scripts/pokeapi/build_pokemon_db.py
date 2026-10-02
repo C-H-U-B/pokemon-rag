@@ -7,7 +7,6 @@ import time
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from pokemon_rag.config import DB_PATH, POKEAPI_DB_PATH, SPREADSHEET_PATH
 

@@ -30,6 +30,11 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.ruff.lint]
+# Erreurs réelles seulement (imports inutilisés, noms indéfinis, redéfinitions).
+# Aucun formatage n'est imposé au code existant.
+select = ["F"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

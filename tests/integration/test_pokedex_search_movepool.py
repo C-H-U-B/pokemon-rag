@@ -340,6 +340,26 @@ def test_explicit_game_stays_strict_and_search_uses_the_same_selection(menu_only
     assert [(row["name_fr"], row["version_group"]) for row in by_level["results"]] == [("Relicanth", "middle")]
 
 
+def test_name_catalogue_is_read_once_until_the_database_changes(catalogue, monkeypatch):
+    import os
+
+    first = engine.pokemon_name_catalogue()
+    assert ("relicanth", "Relicanth", None) in first
+    connections = []
+    connect = engine._connect
+    monkeypatch.setattr(engine, "_connect", lambda: connections.append(1) or connect())
+    first.append(("intrus", "Intrus", None))  # l'appelant ne peut pas altérer le catalogue partagé
+    second = engine.pokemon_name_catalogue()
+    assert not connections and ("intrus", "Intrus", None) not in second
+    with sqlite3.connect(engine.DB_PATH) as conn:
+        conn.execute("UPDATE pokemon_species_names SET name='Autre Nom' WHERE pokemon_species_id=352")
+    conn.close()
+    stamp = os.stat(engine.DB_PATH).st_mtime_ns + 2_000_000_000
+    os.utime(engine.DB_PATH, ns=(stamp, stamp))  # base reconstruite : date de modification différente
+    refreshed = engine.pokemon_name_catalogue()
+    assert connections and any(alias == "autre-nom" for alias, _, _ in refreshed)
+
+
 def test_unique_moves_preserve_learning_methods(catalogue):
     result = engine.get_pokemon_moves("Feunard", move_type="Feu", damage_class="special")
     assert names(result) == ["Lance-Flammes"]

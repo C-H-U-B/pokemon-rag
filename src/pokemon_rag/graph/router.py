@@ -9,7 +9,7 @@ from typing import Any
 
 from openai import OpenAI
 from pokemon_rag.config import DB_PATH, LLM_TIMEOUT_SECONDS, LLM_MAX_RETRIES
-from pokemon_rag.structured.query_engine import parse_pokedex_query
+from pokemon_rag.structured.query_parser import parse_pokedex_query
 
 
 LM_STUDIO_BASE_URL = "http://localhost:1234/v1"

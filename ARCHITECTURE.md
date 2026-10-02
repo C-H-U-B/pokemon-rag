@@ -105,7 +105,8 @@ ni par `query_structured_data` ni par `run_graph`. Voir les
 | Préserver les contraintes avant un outil ADK | `agent/tool_guard.py` | Réutiliser les extracteurs communs ; restaurer les arguments compatibles ou bloquer l'appel ; aucun SQL ni calcul, catalogue/identité via le moteur existant |
 | Choisir une route et identifier le Pokémon | `graph/router.py` | Ne pas y exécuter une requête métier ou générer la réponse finale |
 | Extraire les formes, jeux et niveaux explicites | `constraints/query_constraints.py` | Extraction pure partagée entre moteur structuré et client MCP ; ni SQLite ni choix d'outil. Voir le [guide des contraintes](src/pokemon_rag/constraints/README.md) |
-| Ajouter une opération structurée, comprendre un jeu ou un niveau | `structured/query_engine.py` | Plan validé et SQL prédéfini ; adapter aussi routeur, formatage et éventuellement outil MCP |
+| Ajouter une opération structurée | `structured/query_engine.py` | Plan validé et SQL prédéfini, sans code LLM ; adapter aussi le parseur, le routeur, le formatage et éventuellement un outil MCP |
+| Comprendre une question structurée, un jeu ou un niveau | `structured/query_parser.py` | Produit un plan, jamais du SQL ; seul module de `structured` qui appelle le LLM |
 | Construire les contextes, profils, réponses et prompts de génération | `graph/nodes.py` | Le profil SQLite y est actuellement construit ; ne pas y ajouter le nettoyage wiki ou la construction d'index |
 | Modifier transitions, budgets, erreurs terminales, finalisation | `graph/graph.py` | Ne pas cacher une politique de reprise dans le retrieval ou un outil MCP |
 | Rechercher, fusionner, reranker, reconstruire une section | `rag/retrieval.py` | Retourner des passages ; ni réponse finale ni décision d'abstention |

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pokemon_rag.structured import query_engine as engine
+from pokemon_rag.structured import query_engine as engine, query_parser as parser
 from pokemon_rag.graph.nodes import format_structured_answer, _structured_result_to_context
 
 
@@ -36,8 +36,8 @@ def catalog(monkeypatch):
     ("Quels sont les types de Noadkoko d'Alola ?", "get_pokemon_types"),
 ])
 def test_simple_questions_execute_without_llm(question, operation):
-    with patch.object(engine.llm_client.chat.completions, "create") as llm:
-        result = engine.query_structured_data(question)
+    with patch.object(parser.llm_client.chat.completions, "create") as llm:
+        result = parser.query_structured_data(question)
     assert result["error"] is None
     assert result["operation"] == operation
     llm.assert_not_called()
@@ -85,9 +85,22 @@ def test_version_filters_are_rejected(operation):
 def test_llm_cannot_silently_drop_explicit_game(game):
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=
         '{"operation":"get_pokemon_types","pokemon":"Pikachu","form":null,"version_group":null}'))])
-    with patch.object(engine, "_fast_parse_query", return_value=None), patch.object(
-        engine.llm_client.chat.completions, "create", return_value=response
+    with patch.object(parser, "_fast_parse_query", return_value=None), patch.object(
+        parser.llm_client.chat.completions, "create", return_value=response
     ), patch.object(engine, "execute_plan") as execute:
-        result = engine.query_structured_data(f"Quels sont les types de Pikachu {game} ?")
+        result = parser.query_structured_data(f"Quels sont les types de Pikachu {game} ?")
     assert result["error"]
     execute.assert_not_called()
+
+
+def test_sql_engine_mcp_server_and_guard_load_no_llm_client():
+    """Interpréteur neuf : le parcours SQL/MCP ne doit importer ni client LLM ni analyse de question."""
+    import subprocess
+    import sys
+
+    code = ("import sys\n"
+            "import pokemon_rag.structured.query_engine, pokemon_rag.mcp.server, pokemon_rag.agent.tool_guard\n"
+            "loaded = [name for name in ('openai', 'pokemon_rag.structured.query_parser') if name in sys.modules]\n"
+            "sys.exit(', '.join(loaded) or 0)")
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

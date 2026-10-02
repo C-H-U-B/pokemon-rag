@@ -1,7 +1,7 @@
 import pytest
 
 from pokemon_rag.graph.router import _canonical_pokemon_name
-from pokemon_rag.structured.query_engine import _fast_species, _fast_move
+from pokemon_rag.structured.query_parser import _fast_species, _fast_move
 
 pytestmark = pytest.mark.real_data
 

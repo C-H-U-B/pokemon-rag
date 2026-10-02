@@ -12,6 +12,10 @@ Commencer par le plus petit ensemble discriminant. Pour un changement purement
 documentaire, vérifier d'abord les liens, noms de fichiers et commandes ; la suite
 complète n'apporte pas de validation supplémentaire du texte.
 
+`ruff check .` signale les erreurs réelles (imports inutilisés, noms indéfinis,
+redéfinitions) selon la configuration de `pyproject.toml`. Il n'appelle aucun
+modèle. Aucun formatage n'est imposé : ne pas lancer `ruff format` sur le dépôt.
+
 Privilégier les invariants, limites, entrées invalides ou ambiguës et interactions
 entre composants. Lors d'un bug réel, ajouter une régression qui aurait échoué
 avant sa correction. Ne pas recopier l'algorithme dans le test ni considérer une
@@ -40,7 +44,10 @@ La suite légère utilise un catalogue SQLite en mémoire pour le routeur et le
 parseur. Elle interdit l'accès aux bases du projet et l'initialisation des modèles
 de recherche via ses fixtures. Elle ne bloque pas globalement le réseau ou les
 clients LLM : l'isolation de ceux-ci dépend des simulations de chaque test. Un
-marqueur manquant pourrait donc laisser passer un appel. Les bibliothèques Python
+marqueur manquant pourrait donc laisser passer un appel. Les fonctions SQL de
+`structured/query_engine.py` font exception : ce module n'importe aucun client
+LLM, ce que vérifie `unit/test_pokedex_queries.py` dans un interpréteur neuf.
+Le repli vers un modèle ne peut venir que de `structured/query_parser.py`. Les bibliothèques Python
 restent nécessaires. Les tests de résolution sur la vraie base sont dans
 `integration/test_name_resolution.py`. Les marqueurs `real_data`, `models` et `llm`
 décrivent des prérequis distincts ; `long` reste disponible pour la durée.

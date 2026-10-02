@@ -1135,3 +1135,19 @@ in which the Pokémon has that method, as the machine and level-up tools already
 did. Type, category and power filters still never change the game, and a named
 game stays strict. The game and its method are also presented to the model in
 French, as "Pokémon Champions" and "entraînement".
+
+## 65. [Architecture] Question parsing separated from the SQL engine
+
+The structured engine kept question parsing, with its LLM client, and SQL
+execution in the same file. The MCP server and the guard, which only use the
+SQL, therefore also loaded the inference code, and nothing guaranteed that a
+data test would not call a model.
+
+Question parsing now lives in its own module; the engine keeps plan validation
+and SQL, with no LLM client import. The moved code was not rewritten. A test run
+in a fresh interpreter checks that the engine, the MCP server and the guard load
+without any inference code.
+
+The same pass removes dead code and a duplicated normalisation, caches the name
+catalogue that the guard re-read from the database on every tool call, and adds
+a lint configuration limited to real errors together with uniform line endings.

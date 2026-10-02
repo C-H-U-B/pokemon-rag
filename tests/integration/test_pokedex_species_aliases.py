@@ -37,7 +37,8 @@ def test_missing_species_or_requested_form_remains_an_error(pokemon, form):
 
 
 def test_moves_retain_french_names_and_technical_identifiers():
-    result = get_level_up_moves("Opermine", min_level=10, max_level=25)
+    # Sans jeu, seul le dernier jeu est renvoyé : l'historique multijeux se demande explicitement.
+    result = get_level_up_moves("Opermine", min_level=10, max_level=25, all_versions=True)
     names = {move["identifier"]: move["name_fr"] for move in result["moves"]}
     assert names["fury-swipes"] == "Combo-Griffe"
     assert names["slash"] == "Tranche"

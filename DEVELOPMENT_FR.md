@@ -1195,3 +1195,20 @@ CT et de capacités par niveau. Les filtres de type, de catégorie et de puissan
 ne changent toujours pas de jeu, et un jeu nommé reste strict. Le jeu et sa
 méthode sont aussi présentés en français au modèle, sous les noms « Pokémon
 Champions » et « entraînement ».
+
+## 65. [Architecture] Analyse des questions séparée du moteur SQL
+
+Le moteur structuré réunissait dans un même fichier l'analyse d'une question,
+avec son client LLM, et l'exécution SQL. Le serveur MCP et le guard, qui
+n'utilisent que le SQL, chargeaient donc aussi le code d'inférence, et rien ne
+garantissait qu'un test de données n'appelle pas un modèle.
+
+L'analyse des questions vit désormais dans son propre module ; le moteur garde
+la validation des plans et le SQL, sans aucun import de client LLM. Le code
+déplacé n'a pas été réécrit. Un test lancé dans un interpréteur neuf vérifie que
+le moteur, le serveur MCP et le guard se chargent sans code d'inférence.
+
+La même passe retire du code mort et une normalisation dupliquée, garde en
+mémoire le catalogue des noms que le guard relisait en base à chaque appel
+d'outil, et ajoute une configuration de lint limitée aux erreurs réelles ainsi
+que des fins de ligne uniformes.

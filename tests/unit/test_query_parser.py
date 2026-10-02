@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pokemon_rag.structured.query_engine import _fast_parse_query, parse_query
+from pokemon_rag.structured.query_parser import _fast_parse_query, parse_query
 
 
 @pytest.mark.parametrize(
@@ -143,7 +143,7 @@ def test_fast_parser_does_not_drop_unknown_game(game_filter):
 
 
 def test_parse_query_rejects_unknown_game_before_llm():
-    with patch("pokemon_rag.structured.query_engine.llm_client.chat.completions.create") as mocked:
+    with patch("pokemon_rag.structured.query_parser.llm_client.chat.completions.create") as mocked:
         with pytest.raises(ValueError, match="Jeu inconnu ou ambigu"):
             parse_query("Quelles CT Pikachu apprend-il dans Pokémon JeuInexistant ?")
     mocked.assert_not_called()
@@ -163,7 +163,7 @@ def test_fast_parser_rejects_multiple_operations():
 
 def test_parse_query_skips_llm_when_fast_parser_matches():
     with patch(
-        "pokemon_rag.structured.query_engine.llm_client.chat.completions.create"
+        "pokemon_rag.structured.query_parser.llm_client.chat.completions.create"
     ) as mocked:
         result = parse_query("Comment Pikachu peut-il apprendre Électacle ?")
 
@@ -200,7 +200,7 @@ def test_parse_query_keeps_llm_fallback():
     )()
 
     with patch(
-        "pokemon_rag.structured.query_engine.llm_client.chat.completions.create",
+        "pokemon_rag.structured.query_parser.llm_client.chat.completions.create",
         return_value=fake_response,
     ) as mocked:
         result = parse_query("Donne-moi les informations structurées sur Pikachu.")

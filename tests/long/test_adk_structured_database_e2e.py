@@ -13,7 +13,6 @@ from google.genai import types
 
 from pokemon_rag.agent.agent import root_agent
 from pokemon_rag.constraints.query_constraints import VERSION_GROUP_NAMES_FR, _TYPE_NAMES, normalize
-from pokemon_rag.constraints.query_constraints import VERSION_GROUP_NAMES_FR
 
 
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "test_results"
@@ -448,20 +447,6 @@ def _factual_checks(result, answer):
         checks.append((level in levels,f"Niveau {level} prouvé",f"Niveau {level} absent du résultat outil"))
     for french,english,added in _english_additions(_localized_pairs(result),answer):
         checks.append((not added,f"Libellé français privilégié : {french}",f"Nom anglais ajouté : {english}"))
-    def games(value):
-        if isinstance(value,dict):
-            return [value["version_group"]] if isinstance(value.get("version_group"),str) else [
-                version for item in value.values() for version in games(item)]
-        if isinstance(value,list):
-            return [version for item in value for version in games(item)]
-        return []
-    for version in set(games(result)):
-        if (version in VERSION_GROUP_NAMES_FR and not all(len(word) == 1 for word in version.split("-"))
-                and normalize(version) not in normalize(VERSION_GROUP_NAMES_FR[version])):
-            english_pattern = r"(?<!\w)" + r"(?:\s*(?:&|and|-)\s*|\s+)".join(
-                re.escape(word) for word in version.split("-")) + r"(?!\w)"
-            checks.append((not re.search(english_pattern,answer,re.I),
-                f"Jeu présenté en français : {VERSION_GROUP_NAMES_FR[version]}",f"Nom anglais du jeu ajouté : {version}"))
     def games(value):
         if isinstance(value,dict):
             return [value["version_group"]] if isinstance(value.get("version_group"),str) else [

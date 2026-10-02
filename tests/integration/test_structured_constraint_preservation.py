@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
 
-from pokemon_rag.structured.query_engine import query_structured_data
+from pokemon_rag.structured.query_parser import query_structured_data
 
 
 @pytest.mark.real_data
