@@ -120,8 +120,9 @@ Les jeux sont ramenés aux groupes de versions du modèle de données, pas à un
 Diamant/Perle, Soleil/Lune, Épée/Bouclier et Écarlate/Violet. Elle n'est pas
 exhaustive ; les titres complets comme Ultra-Soleil, Rouge Feu ou Diamant
 Étincelant ont priorité sur l'alias court qu'ils contiennent. Les identifiants
-des jeux de la table de libellés sont également reconnus. Des identifiants
-supplémentaires peuvent être fournis par l'appelant.
+des jeux de la table de libellés sont également reconnus, sauf `champions` :
+ce mot courant ne désigne le jeu que dans le titre complet « Pokémon Champions ».
+Des identifiants supplémentaires peuvent être fournis par l'appelant.
 
 ## Limites et évolution
 

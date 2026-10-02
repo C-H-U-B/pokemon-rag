@@ -1056,3 +1056,49 @@ Rejected proposals remain intact, and Qwen retains tool selection and retry.
 Deterministic tests check omissions, contradictions, ambiguities and combinations,
 then transmission of repaired arguments to the real MCP server and SQLite.
 Qwen's actual retry after a refusal remains for the manual campaign to verify.
+
+## 61. [Architecture] Call rules carried by tool schemas
+
+Qwen's proposals were still often repaired by the guard: a forgotten top N
+quantity, no sort on a question about Mega forms, a national number sent to the
+identity tool, an omitted move category. Inspecting the catalogue actually sent
+showed that ADK abridgement keeps only the first paragraph of each description:
+most arguments arrived without explanation, while the ranking rule was repeated
+in four places.
+
+Each tool now states its direction in that first sentence: a named Pokémon to
+its facts, or properties to Pokémon. Rules specific to an argument live in its
+description, with an example distinguishing a superlative from a top N and the
+French equivalents of move categories. The agent instruction keeps only the
+shared rules: facts proven by tools, French names copied from the question, no invented
+constraint, a French answer without technical identifiers. The volume sent to
+the model stays the same.
+
+The guard keeps its role and was not modified. A test checks the abridged
+catalogue without presuming Qwen's behaviour, which remains to be measured by
+the manual campaign. That campaign's diagnostic now counts an omitted argument
+as its default value, and two answer checks no longer mistake a French name
+containing an English word for added English, or a list rank for a statistic.
+
+## 62. [Bug fix] Small results rejected by the context budget
+
+A filtered movepool question received the budget abstention although the tool
+had returned three or eight correct moves. Measuring the path showed that the
+result itself was small: after a `pokemon_moves` response, the tool catalogue
+stayed attached to the formulation request, because that response was not
+recognised as complete, and the catalogue alone took three quarters of the cap.
+
+A complete `pokemon_moves` page is now formulated without the catalogue, like
+the other tools. Its projection drops technical identifiers and keeps the facts
+of each move; when everything does not fit, it narrows to the requested facts
+before cutting rows, always with an explicit signal. The schema view given to
+the model no longer carries the "type or null" forms, which leaves room to
+retry after a guard refusal, and the fence ADK puts around descriptions is no
+longer left open. The MCP contract is unchanged. Abstentions are logged with
+their reason.
+
+Rankings had lost their values in answers: projections were identical before
+and after, the cause was a rewording of the instruction, since reverted. Each
+row's value now carries the French name of its statistic, so it no longer
+depends on a technical key. The effect on Qwen's answers remains to be measured
+by the manual campaign.

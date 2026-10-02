@@ -1113,3 +1113,51 @@ reprise des outils. Les tests déterministes vérifient omissions, contradiction
 ambiguïtés et combinaisons, puis la transmission des arguments réparés au vrai
 serveur MCP et à SQLite. La reprise effective par Qwen après un refus reste
 à vérifier dans la campagne manuelle.
+
+## 61. [Architecture] Règles d'appel portées par les schémas d'outils
+
+Les propositions de Qwen restaient souvent réparées par le guard : quantité
+d'un top N oubliée, tri absent d'une question sur les Méga, numéro national
+envoyé à l'outil d'identité, catégorie de capacité omise. L'examen du catalogue
+réellement transmis a montré que l'abrègement ADK ne conserve que le premier
+paragraphe de chaque description : la plupart des arguments arrivaient sans
+explication, tandis que la règle des classements était répétée à quatre endroits.
+
+Chaque outil annonce désormais sa direction dans cette première phrase :
+Pokémon nommé vers ses faits, ou propriétés vers des Pokémon. Les règles propres
+à un argument sont placées dans sa description, avec un exemple pour distinguer
+superlatif et top N et les équivalents français des catégories de capacités.
+L'instruction de l'agent ne garde que les règles communes : faits prouvés par
+les outils, noms français recopiés de la question, aucune contrainte inventée, réponse en
+français sans identifiant technique. Le volume transmis au modèle reste le même.
+
+Le guard conserve son rôle et n'a pas été modifié. Un test vérifie le catalogue
+abrégé, sans présumer du comportement de Qwen, qui reste à mesurer par la
+campagne manuelle. Le diagnostic de cette campagne compte désormais un argument
+omis comme sa valeur par défaut, et deux contrôles de réponse ne confondent plus
+un nom français contenant un mot anglais avec un ajout d'anglais, ni un rang de
+liste avec une statistique.
+
+## 62. [Bug fix] Petits résultats refusés par le budget de contexte
+
+Une question de movepool filtré recevait l'abstention de budget alors que
+l'outil avait renvoyé trois ou huit capacités correctes. La mesure du parcours
+a montré que le résultat lui-même était petit : après une réponse de
+`pokemon_moves`, le catalogue d'outils restait joint à la requête de
+formulation, faute de reconnaître cette réponse comme complète, et ce
+catalogue occupait à lui seul les trois quarts du plafond.
+
+Une page complète de `pokemon_moves` est désormais formulée sans le catalogue,
+comme les autres outils. Sa projection retire les identifiants techniques et
+garde les faits de chaque capacité ; quand tout ne tient pas, elle se réduit aux
+faits demandés avant de couper des lignes, toujours avec un signalement
+explicite. La vue des schémas donnée au modèle est allégée des formes « type ou
+null », ce qui laisse la place de réessayer après un refus du guard, et le
+balisage qu'ADK pose autour des descriptions n'est plus laissé ouvert. Le
+contrat MCP ne change pas. Les abstentions sont journalisées avec leur raison.
+
+Les classements avaient perdu leurs valeurs dans les réponses : les projections
+étaient identiques avant et après, la cause était une reformulation de
+l'instruction, annulée depuis. La valeur de chaque ligne porte maintenant le
+nom français de sa statistique, pour ne plus dépendre d'une clé technique.
+L'effet sur les réponses de Qwen reste à mesurer par la campagne manuelle.

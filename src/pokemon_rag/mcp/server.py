@@ -27,30 +27,38 @@ from pokemon_rag.structured.query_engine import (
 
 mcp = MCPServer("Pokemon RAG")
 
+# Seuls le premier paragraphe d'une docstring et les descriptions d'arguments
+# restent visibles du modèle après l'abrègement ADK : y placer les règles d'appel.
+# Chaque octet ajouté ici réduit le budget de contexte ADK ; une description
+# d'argument coûte en plus environ 80 octets de balisage ADK dans le vrai flux.
+
 
 @mcp.tool()
 def pokemon_search(
-    pokedex_number: int | None = None, generation: int | None = None,
-    types: list[str] | None = None, type_match: str = "all",
-    legendary: Annotated[bool | None, Field(description="Légendaire uniquement ; indépendant de mythical.")] = None,
-    mythical: Annotated[bool | None, Field(description="Fabuleux = true ; ne pas remplacer par legendary.")] = None,
-    form: str | None = None, version_group: str | None = None,
+    pokedex_number: Annotated[int | None, Field(description="Numéro national → son Pokémon.")] = None,
+    generation: int | None = None,
+    types: list[str] | None = None,
+    type_match: Literal["all", "any", "exact"] = "all",
+    legendary: Annotated[bool | None, Field(description="Légendaire. Indépendant de mythical.")] = None,
+    mythical: Annotated[bool | None, Field(description="Fabuleux. Indépendant de legendary.")] = None,
+    form: str | None = None,
+    form_category: Annotated[Literal["mega"] | None,
+                             Field(description="mega : toutes les Méga ; se combine avec le tri et best_only.")] = None,
+    sort_by: Annotated[Literal["national_number", "hp", "attack", "defense", "special-attack",
+                              "special-defense", "speed", "base-stat-total"],
+                       Field(description="Statistique à classer : PV=hp, Vitesse=speed, total des six=base-stat-total.")] = "national_number",
+    sort_order: Annotated[Literal["asc", "desc"],
+                          Field(description="desc : le plus/meilleur/rapide ; asc : le moins/lent.")] = "asc",
+    best_only: Annotated[bool, Field(description="true : superlatif sans nombre (« le plus rapide », « les plus lents »), garde tous les ex aequo. false : liste simple ou top N chiffré.")] = False,
+    limit: Annotated[int, Field(description="Nombre demandé : « les 5 plus rapides » → 5 avec best_only=false. 0 pour compter, max 100.")] = 30,
+    offset: int = 0,
+    version_group: str | None = None,
     move_type: str | None = None, damage_class: str | None = None,
     min_power: int | None = None, max_power: int | None = None,
     learning_method: str | None = None, min_level: int | None = None,
     max_level: int | None = None,
-    limit: Annotated[int, Field(description="Quantité explicite top N : limit=N et best_only=false ; défaut 30, 0 pour compter, maximum 100.")] = 30,
-    offset: int = 0,
-    sort_by: Annotated[Literal["national_number", "hp", "attack", "defense", "special-attack",
-                              "special-defense", "speed", "base-stat-total"],
-                       Field(description="Tri SQL : numéro national ou statistique de base ; total = somme des six stats.")] = "national_number",
-    sort_order: Annotated[Literal["asc", "desc"],
-                          Field(description="asc : minimum/plus lent ; desc : maximum/meilleur/plus rapide.")] = "asc",
-    best_only: Annotated[bool, Field(description="Superlatif sans quantité, singulier ou pluriel : true conserve tous les ex aequo au min/max SQL. Top N explicite : false, limit=N.")] = False,
-    form_category: Annotated[Literal["mega"] | None,
-                             Field(description="mega : toutes les Méga et leurs statistiques, y compris X/Y/Z. null : sémantique de form inchangée.")] = None,
 ) -> dict[str, Any]:
-    """Recherche et classement SQL filtrés. Superlatif sans N, singulier ou pluriel : best_only=true ; top N : best_only=false, limit=N. Méga : form_category=mega. Restituer name_fr et base_stat_value avec stat_name_fr ; égalités via tie/tie_count. Aucun calcul du modèle.
+    """Propriétés → Pokémon : trouve, compte ou classe par numéro national, génération, types, légendaire/fabuleux, forme, statistique de base ou capacité apprenable. Aucun nom de Pokémon en argument.
 
     pokedex_number est le numéro national ; generation est l'origine de l'espèce.
     legendary et mythical sont distincts. types accepte les noms français ou les
@@ -68,6 +76,7 @@ def pokemon_search(
     Pour nommer ces capacités si elles sont demandées, appeler pokemon_moves.
     sort_by : national_number, hp, attack, defense, special-attack,
     special-defense, speed, base-stat-total. Hors IV/EV/nature/niveau/combat.
+    Restituer name_fr et base_stat_value avec stat_name_fr ; égalités via tie/tie_count.
     best_only : filtre au minimum/maximum SQL, avec best_value et tie_count.
     Les ex aequo restent paginés ; total_count compte les gagnants, matching_count
     les candidats. Top N classique : best_only=false, limit=N.
@@ -87,12 +96,13 @@ def pokemon_search(
 @mcp.tool()
 def pokemon_moves(
     pokemon: str, form: str | None = None, version_group: str | None = None,
-    move_type: str | None = None, damage_class: str | None = None,
+    move_type: str | None = None,
+    damage_class: Annotated[str | None, Field(description="physique=physical, spéciale=special, statut=status.")] = None,
     min_power: int | None = None, max_power: int | None = None,
     learning_method: str | None = None, min_level: int | None = None,
     max_level: int | None = None, limit: int = 30, offset: int = 0,
 ) -> dict[str, Any]:
-    """Capacités uniques apprenables par un Pokémon, avec filtres SQL combinables.
+    """Pokémon nommé → ses capacités filtrées par type, catégorie ou puissance. Sinon préférer l'outil spécialisé : niveaux, CT/CS, méthodes d'une capacité.
 
     pokemon : nom français, anglais ou PokéAPI ; form : forme explicite, sinon défaut.
     move_type : type français ou identifiant ; damage_class : physical/special/status.
@@ -122,7 +132,7 @@ def pokemon_evolutions(
     form: str | None = None,
     version_group: str | None = None,
 ) -> dict[str, Any]:
-    """Retourne les évolutions connues d'un Pokémon.
+    """Pokémon nommé → ses évolutions et leurs conditions.
 
     Args:
         pokemon: Nom français, anglais ou identifiant PokéAPI du Pokémon.
@@ -145,7 +155,7 @@ def pokemon_level_up_moves(
     max_level: int | None = None,
     all_versions: bool = False,
 ) -> dict[str, Any]:
-    """Capacités par niveau : jeu explicite ou dernier jeu avec données ; all_versions=true pour une demande historique multijeux.
+    """Pokémon nommé → capacités apprises par niveau. Jeu demandé, sinon le plus récent avec données ; all_versions=true : historique multijeux.
 
     Args:
         pokemon: Nom français, anglais ou identifiant PokéAPI du Pokémon.
@@ -172,7 +182,7 @@ def pokemon_move_learning_methods(
     version_group: str | None = None,
     all_versions: bool = False,
 ) -> dict[str, Any]:
-    """Méthodes d'apprentissage : jeu demandé ou dernier movepool disponible ; all_versions=true pour l'historique multijeux.
+    """Pokémon et capacité nommés → comment il l'apprend. Jeu demandé, sinon le plus récent avec données ; all_versions=true : historique multijeux.
 
     Args:
         pokemon: Nom français, anglais ou identifiant PokéAPI du Pokémon.
@@ -196,7 +206,7 @@ def pokemon_machine_moves(
     version_group: str | None = None,
     all_versions: bool = False,
 ) -> dict[str, Any]:
-    """CT/CS : jeu demandé ou plus récent avec données de CT ; all_versions=true pour l'historique multijeux.
+    """Pokémon nommé → capacités apprises par CT/CS. Jeu demandé, sinon le plus récent avec données ; all_versions=true : historique multijeux.
 
     Args:
         pokemon: Nom français, anglais ou identifiant PokéAPI du Pokémon.
@@ -217,7 +227,7 @@ def pokemon_types(
     pokemon: str,
     form: str | None = None,
 ) -> dict[str, Any]:
-    """Retourne seulement les types d'une entrée du Pokédex personnalisé.
+    """Pokémon nommé → ses types seulement. Type → Pokémon : pokemon_search.
 
     Ne fournit ni apparence ni description physique, comportement ou habitat.
     Pour ces sujets, utiliser pokemon_rag_search.
@@ -237,7 +247,7 @@ def pokemon_pokedex_identity(
     pokemon: str,
     form: str | None = None,
 ) -> dict[str, Any]:
-    """Nom → numéro national : pokemon_pokedex_identity(pokemon=nom). Ne pas utiliser pokemon_search pour le numéro d'un Pokémon nommé.
+    """Pokémon nommé → son numéro national et sa génération. Numéro → Pokémon : pokemon_search(pokedex_number=N).
 
     L'identité comprend notamment son numéro national et sa génération
     d'introduction.
@@ -261,7 +271,7 @@ def pokemon_signature_moves(
     pokemon: str,
     form: str | None = None,
 ) -> dict[str, Any]:
-    """Retourne les capacités signature et pseudo-signature renseignées.
+    """Pokémon nommé → ses capacités signature et pseudo-signature.
 
     Args:
         pokemon: Nom du Pokémon ou de l'entrée du Pokédex.

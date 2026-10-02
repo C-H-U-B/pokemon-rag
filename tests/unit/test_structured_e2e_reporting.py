@@ -95,3 +95,41 @@ def test_valid_move_alias_is_checked_against_resolved_tool_identity(reporting):
     executions = [{"name":case.expected_tool,"args":{"move":"toxic"},"blocked":False}]
     responses = [{"name":case.expected_tool,"response":{"move":{"name_fr":"Toxik","name_en":"Toxic"},"methods":[]}}]
     assert all(ok for ok,_,_ in reporting["_semantic_checks"](case,[],responses,"Toxik",executions))
+
+
+def test_french_label_containing_an_english_word_is_not_an_added_english_name(reporting):
+    result = {"operation":"get_machine_moves","moves":[
+        {"name_fr":"Abri","name_en":"Protect"},{"name_fr":"Rune Protect","name_en":"Safeguard"}]}
+    assert all(ok for ok,_,_ in reporting["_factual_checks"](result,"CT : Abri, Rune Protect"))
+    assert not all(ok for ok,_,_ in reporting["_factual_checks"](result,"CT : Abri (Protect), Rune Protect"))
+
+
+def test_rank_number_on_next_line_is_not_read_as_a_statistic_value(reporting):
+    result = {"operation":"search_pokemon","stat_name_fr":"PV","results":[
+        {"name_fr":"Premier","base_stat_value":255},{"name_fr":"Second","base_stat_value":250}]}
+    assert all(ok for ok,_,_ in reporting["_factual_checks"](result,"1. Premier - 255 PV  \n2. Second - 250 PV"))
+    assert not all(ok for ok,_,_ in reporting["_factual_checks"](result,"Premier 255, Second 250, PV : 300"))
+
+
+def test_omitted_argument_equal_to_schema_default_is_not_a_proposal_gap(reporting):
+    case = reporting["Case"]("list","Des Pokémon Spectre","pokemon_search",{"best_only":False,"limit":5})
+    calls = [{"name":"pokemon_search","args":{},"effective_args":{"best_only":False,"limit":30}}]
+    assert [ok for ok,_,_ in reporting["_proposal_checks"](case,calls)] == [True,False]
+
+
+def test_ranking_value_is_checked_under_its_projected_statistic_name(reporting):
+    result = {"operation":"search_pokemon","stat_name_fr":"Vitesse","results":[{"name_fr":"Espèce","Vitesse":200}]}
+    assert all(ok for ok,_,_ in reporting["_factual_checks"](result,"Espèce : 200 de Vitesse"))
+    assert not all(ok for ok,_,_ in reporting["_factual_checks"](result,"Espèce"))
+
+
+def test_level_from_a_filtered_movepool_row_is_a_proven_level(reporting):
+    result = {"operation":"get_pokemon_moves","results":[
+        {"name_fr":"Capacité","learning":[{"method":"montée de niveau","level":39},{"method":"CT/CS"}]}]}
+    assert all(ok for ok,_,_ in reporting["_factual_checks"](result,"Capacité, apprise au niveau 39."))
+    assert not all(ok for ok,_,_ in reporting["_factual_checks"](result,"Capacité, apprise au niveau 12."))
+
+
+def test_french_game_title_containing_its_identifier_is_not_an_english_name(reporting):
+    result = {"operation":"get_pokemon_moves","version_group":"champions","results":[]}
+    assert all(ok for ok,_,_ in reporting["_factual_checks"](result,"Dans Pokémon Champions, aucune capacité."))

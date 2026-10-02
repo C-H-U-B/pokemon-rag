@@ -77,3 +77,32 @@ def test_actual_top_ten_rankings_fit_tool_and_model_context_without_llm():
         ], config=types.GenerateContentConfig(system_instruction=root_agent.instruction,
             tools=[types.Tool(function_declarations=[tool._get_declaration() for tool in tools])]))
         assert before_model_budget(SimpleNamespace(state={}), req) is None
+
+
+def test_abridged_catalogue_keeps_boundaries_closed_values_and_instruction_names():
+    """Vérifie ce que le modèle reçoit après abrègement, pas son comportement."""
+    import re
+
+    tools = asyncio.run(_get_mcp_tools())
+    full = {tool.name: tool._get_declaration().description for tool in tools}
+    req = LlmRequest(contents=[types.Content(role="user", parts=[types.Part(text="Question")])],
+        config=types.GenerateContentConfig(system_instruction=root_agent.instruction,
+            tools=[types.Tool(function_declarations=[tool._get_declaration() for tool in tools])]))
+    assert before_model_budget(SimpleNamespace(state={}), req) is None
+    seen = {declaration.name: declaration for declaration in req.config.tools[0].function_declarations}
+    properties = {name: declaration.parameters_json_schema["properties"] for name, declaration in seen.items()}
+
+    for name, declaration in seen.items():
+        assert declaration.description == full[name].split("\n\n", 1)[0], f"{name} : premier paragraphe coupé"
+    assert set(properties["pokemon_search"]["type_match"]["enum"]) == {"all", "any", "exact"}
+    assert properties["pokemon_search"]["pokedex_number"].get("description")
+    description = properties["pokemon_moves"]["damage_class"].get("description", "")
+    assert all(value in description for value in ("physical", "special", "status"))
+    # Convention de direction : cible nommée → faits, ou propriétés → Pokémon.
+    for name, declaration in seen.items():
+        if name != "pokemon_rag_search":
+            named = "pokemon" in declaration.parameters_json_schema.get("required", [])
+            assert declaration.description.startswith("Pokémon" if named else "Propriétés → Pokémon"), name
+
+    # L'instruction ne cite que des outils existants ; les règles d'arguments vivent dans les schémas.
+    assert set(re.findall(r"\bpokemon_\w+", root_agent.instruction)) <= set(seen)

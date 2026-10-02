@@ -26,6 +26,7 @@ VERSION_GROUP_NAMES_FR = {
     "lets-go-pikachu-lets-go-eevee":"Pokémon Let's Go Pikachu et Évoli",
     "sword-shield":"Pokémon Épée et Bouclier", "brilliant-diamond-shining-pearl":"Pokémon Diamant Étincelant et Perle Scintillante",
     "legends-arceus":"Légendes Pokémon : Arceus", "scarlet-violet":"Pokémon Écarlate et Violet",
+    "champions":"Pokémon Champions",
 }
 
 BASE_STAT_NAMES = {
@@ -76,6 +77,9 @@ VERSION_ALIASES = {
 }
 # Les titres complets ont priorité sur les mots qu'ils contiennent.
 VERSION_ALIASES.update({identifier: identifier for identifier in VERSION_GROUP_NAMES_FR})
+# « champions » seul est un mot courant (champions d'arène) : seul le titre complet désigne le jeu.
+del VERSION_ALIASES["champions"]
+VERSION_ALIASES["pokemon-champions"] = "champions"
 VERSION_ALIASES.update({
     "jaune":"yellow", "or-et-argent":"gold-silver", "cristal":"crystal",
     "rubis-et-saphir":"ruby-sapphire", "emeraude":"emerald", "platine":"platinum",

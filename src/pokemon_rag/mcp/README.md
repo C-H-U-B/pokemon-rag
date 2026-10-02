@@ -19,9 +19,20 @@ Le modèle traduit la question en arguments ; SQL calcule totaux et gagnants.
 Un top N explicite garde `best_only=false` avec `limit=N`, tandis qu'un superlatif
 sans quantité, singulier ou pluriel, utilise
 `best_only=true` et doit signaler `tie/tie_count`, même sur une page d'une ligne.
-Les descriptions des arguments restent visibles après l'abrègement ADK.
-Elles demandent aussi de restituer `base_stat_value` et `stat_name_fr` avec les
-noms français. L'adaptation ADK masque les traductions anglaises appariées à
+Après l'abrègement ADK, le modèle ne reçoit que le premier paragraphe de chaque
+docstring (300 caractères au plus) et les descriptions d'arguments. Ce premier
+paragraphe annonce donc la direction de l'outil : « Pokémon nommé → » ses faits,
+ou « Propriétés → Pokémon » pour `pokemon_search`, qui ne reçoit aucun nom.
+Les règles propres à un argument sont dans sa description `Field` : numéro
+national, superlatif ou top N avec un exemple, statistique, Méga combinable au
+tri, catégories de capacités en français pour `pokemon_moves`. Le reste de la
+docstring sert aux clients qui lisent la description complète, comme le client
+MCP local. Ajouter du texte à ces deux emplacements réduit d'autant le budget
+ADK. Dans le vrai flux, ADK encadre en plus chaque description par des marqueurs
+de contenu non fiable, soit environ 80 octets par description d'argument : une
+mesure du catalogue hors runner sous-estime donc la requête réelle.
+`type_match` est une enum `all/any/exact` ; `damage_class` reste une
+chaîne car le moteur accepte aussi les termes français. L'adaptation ADK masque les traductions anglaises appariées à
 un libellé français, sauf demande explicite ; le contrat des retours MCP reste inchangé.
 Les guards et la réconciliation conservent ces arguments sans comparer de valeurs.
 Ils restaurent aussi les motifs de classement explicitement reconnus et les
@@ -31,6 +42,9 @@ reconnaissance sont dans le [guide des contraintes](../constraints/README.md).
 Les callbacks ADK
 bornent les données destinées au modèle sans changer les réponses MCP aux
 autres clients : voir le [budget ADK](../agent/README.md#budget-de-contexte).
+Le contrat MCP et le contexte du modèle sont donc deux choses distinctes : le
+serveur renvoie identifiants, noms anglais et `base_stat_value` ; la projection
+ADK en présente une vue réduite et renommée, propre à ce client.
 `pokemon_level_up_moves`, `pokemon_machine_moves` et
 `pokemon_move_learning_methods` recouvrent une partie de `pokemon_moves` et
 conservent leurs informations spécialisées. Sans jeu, les capacités par niveau

@@ -303,8 +303,10 @@ async def _run_agent(question: str, events=None, executions=None, raw_responses=
         refusal = root_agent.before_tool_callback(tool=tool,args=args,tool_context=tool_context)
         declaration = tool._get_declaration()
         properties = (declaration.parameters_json_schema or {}).get("properties",{})
-        effective = {**{key:deepcopy(value["default"]) for key,value in properties.items() if "default" in value}, **args}
-        executions.append({"name":tool.name,"proposed_args":proposed,"args":deepcopy(args),"effective_args":deepcopy(effective),
+        defaults = {key:deepcopy(value["default"]) for key,value in properties.items() if "default" in value}
+        effective = {**defaults, **args}
+        executions.append({"name":tool.name,"proposed_args":proposed,"proposed_effective_args":{**defaults, **proposed},
+                           "args":deepcopy(args),"effective_args":deepcopy(effective),
                            "blocked":refusal is not None,"guard_response":deepcopy(refusal)})
         return refusal
 
@@ -341,7 +343,9 @@ def _final_text(events):
 
 def _calls(events, executions=()):
     if executions:
-        return [{"name":call["name"],"args":deepcopy(call["proposed_args"])} for call in executions]
+        return [{"name":call["name"],"args":deepcopy(call["proposed_args"]),
+                 "effective_args":deepcopy(call.get("proposed_effective_args",call["proposed_args"]))}
+                for call in executions]
     result = []
     for event in events:
         if event.content is None:
@@ -395,11 +399,21 @@ def _arg_matches(actual, expected, key=None):
 
 
 def _proposal_checks(case,calls):
+    """Diagnostic de la proposition brute ; un argument omis vaut son défaut de schéma."""
     call = _first_call(calls,case.expected_tool)
-    return [(call is not None and _arg_matches(call["args"].get(key),expected,key),
+    proposed = call.get("effective_args",call["args"]) if call else {}
+    return [(call is not None and _arg_matches(proposed.get(key),expected,key),
              f"Proposition Qwen {key}={expected!r}",
-             f"Proposition Qwen {key}: attendu={expected!r}, obtenu={call['args'].get(key) if call else None!r}")
+             f"Proposition Qwen {key}: attendu={expected!r}, obtenu={proposed.get(key)!r}")
             for key,expected in case.expected_args.items()]
+
+
+def _english_additions(pairs,answer):
+    """Un libellé français peut contenir un mot anglais : le retirer avant la recherche."""
+    for french,_ in sorted(pairs,key=lambda pair:-len(pair[0])):
+        answer = re.sub(re.escape(french),"",answer,flags=re.I)
+    return [(french,english,bool(re.search(rf"(?<!\w){re.escape(english)}(?!\w)",answer,re.I)))
+            for french,english in pairs]
 
 
 def _localized_pairs(value):
@@ -427,13 +441,13 @@ def _factual_checks(result, answer):
             return [item for nested in value for item in values(nested,keys)]
         return []
     levels = values(result.get("moves",[]), {"level"}) + values(result.get("methods",[]),{"level"})
+    levels += values(result.get("results",[]), {"level"})  # pokemon_moves : niveaux dans learning
     levels += values(result.get("evolutions",[]), {"minimum_level"})
     for match in re.finditer(r"\bniveau\s*(?:de\s*)?(\d+)\b",answer,re.I):
         level = int(match.group(1))
         checks.append((level in levels,f"Niveau {level} prouvé",f"Niveau {level} absent du résultat outil"))
-    for french,english in _localized_pairs(result):
-        absent = not re.search(rf"(?<!\w){re.escape(english)}(?!\w)",answer,re.I)
-        checks.append((absent,f"Libellé français privilégié : {french}",f"Nom anglais ajouté : {english}"))
+    for french,english,added in _english_additions(_localized_pairs(result),answer):
+        checks.append((not added,f"Libellé français privilégié : {french}",f"Nom anglais ajouté : {english}"))
     def games(value):
         if isinstance(value,dict):
             return [value["version_group"]] if isinstance(value.get("version_group"),str) else [
@@ -442,7 +456,8 @@ def _factual_checks(result, answer):
             return [version for item in value for version in games(item)]
         return []
     for version in set(games(result)):
-        if version in VERSION_GROUP_NAMES_FR and not all(len(word) == 1 for word in version.split("-")):
+        if (version in VERSION_GROUP_NAMES_FR and not all(len(word) == 1 for word in version.split("-"))
+                and normalize(version) not in normalize(VERSION_GROUP_NAMES_FR[version])):
             english_pattern = r"(?<!\w)" + r"(?:\s*(?:&|and|-)\s*|\s+)".join(
                 re.escape(word) for word in version.split("-")) + r"(?!\w)"
             checks.append((not re.search(english_pattern,answer,re.I),
@@ -455,11 +470,14 @@ def _factual_checks(result, answer):
             return [version for item in value for version in games(item)]
         return []
     for version in set(games(result)):
-        if version in VERSION_GROUP_NAMES_FR and not all(len(word) == 1 for word in version.split("-")):
+        if (version in VERSION_GROUP_NAMES_FR and not all(len(word) == 1 for word in version.split("-"))
+                and normalize(version) not in normalize(VERSION_GROUP_NAMES_FR[version])):
             english_pattern = r"(?<!\w)" + r"(?:\s*(?:&|and|-)\s*|\s+)".join(
                 re.escape(word) for word in version.split("-")) + r"(?!\w)"
             checks.append((not re.search(english_pattern,answer,re.I),
                 f"Jeu présenté en français : {VERSION_GROUP_NAMES_FR[version]}",f"Nom anglais du jeu ajouté : {version}"))
+    def stat_value(row):
+        return row.get("base_stat_value", row.get(result.get("stat_name_fr")))
     if result.get("operation") == "search_pokemon":
         require_all = bool(result.get("stat_name_fr")) or len(result.get("results",[])) <= 10
         if result.get("results"):
@@ -467,20 +485,21 @@ def _factual_checks(result, answer):
                                for row in result["results"] if row.get("name_fr")),
                            "Réponse nomme un résultat SQL", "Réponse ne nomme aucun résultat SQL"))
         for row in result.get("results",[]):
-            for value in (row.get("name_fr"),row.get("base_stat_value")):
+            for value in (row.get("name_fr"),stat_value(row)):
                 if value is not None and require_all:
                     present = (bool(re.search(rf"(?<!\d){re.escape(str(value))}(?!\d)",answer))
                                if type(value) in {int,float} else str(value).casefold() in answer.casefold())
                     checks.append((present,f"Résultat final restitue {value!r}",f"Résultat final omet {value!r}"))
         stat = result.get("stat_name_fr")
         if stat:
-            allowed = {row.get("base_stat_value") for row in result.get("results",[])}
-            for match in re.finditer(rf"{re.escape(stat)}\s*(?:de\s*base\s*)?(?:[:=]|de)?\s*(\d+)\b",answer,re.I):
+            allowed = {stat_value(row) for row in result.get("results",[])}
+            # Espaces horizontaux seulement : le rang de la ligne suivante n'est pas une valeur.
+            for match in re.finditer(rf"{re.escape(stat)}[^\S\n]*(?:de[^\S\n]*base[^\S\n]*)?(?:[:=]|de)?[^\S\n]*(\d+)\b",answer,re.I):
                 value = int(match.group(1))
                 checks.append((value in allowed,f"{stat} {value} prouvé",f"{stat} {value} absent du résultat SQL"))
     elif result.get("stat_name_fr"):
         for row in result.get("results",[]):
-            for value in (row.get("name_fr"),row.get("base_stat_value")):
+            for value in (row.get("name_fr"),stat_value(row)):
                 if value is not None:
                     present = bool(re.search(rf"(?<!\d){re.escape(str(value))}(?!\d)",answer))
                     checks.append((present,f"Classement restitue {value!r}",f"Classement omet {value!r}"))
@@ -536,9 +555,8 @@ def _semantic_checks(case, calls, responses, answer, executions, raw_responses=(
             except (ValueError,TypeError):
                 raw_data = None
         if isinstance(raw_data,dict):
-            for french,english in _localized_pairs(raw_data):
-                checks.append((not re.search(rf"(?<!\w){re.escape(english)}(?!\w)",answer,re.I),
-                    f"Libellé français : {french}",f"Nom anglais ajouté : {english}"))
+            for french,english,added in _english_additions(_localized_pairs(raw_data),answer):
+                checks.append((not added,f"Libellé français : {french}",f"Nom anglais ajouté : {english}"))
 
     checks.append((
         bool(answer) and "Je n'ai pas pu obtenir une réponse fiable" not in answer,

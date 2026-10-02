@@ -79,7 +79,21 @@ calling et du parcours MCP restent dans `tests/long`, marqués `llm`, `models`
 et `long`, et doivent être exécutés par l'utilisateur.
 
 `integration/test_adk_mcp_toolset.py` vérifie la découverte exacte des dix outils
-via le vrai serveur stdio, sans appel d'outil ni LLM. Le test stdio officiel
+via le vrai serveur stdio, sans appel d'outil ni LLM. Il contrôle aussi le
+catalogue tel que le modèle le reçoit après abrègement : premier paragraphe non
+coupé, direction annoncée, valeurs fermées exposées, outils cités par
+l'instruction existants. Il ne dit rien du choix effectif de Qwen. Sa mesure
+de budget ignore le balisage qu'ADK ajoute dans le vrai flux :
+`integration/test_adk_stat_rankings.py` vérifie donc, avec le vrai runner et un
+modèle simulé, qu'une question longue atteint le modèle sans abstention locale.
+Le même fichier vérifie qu'une petite page de `pokemon_moves`, y compris après
+réparation par le guard, arrive à la formulation avec tous ses faits, qu'un
+movepool complet est listé sans coupe silencieuse et qu'un refus du guard
+laisse le catalogue disponible pour la reprise.
+`unit/test_adk_context_budget.py` couvre la projection : champs techniques
+retirés, faits conservés, réduction aux faits demandés avant toute coupe,
+valeur de classement nommée par sa statistique, vue simplifiée des schémas,
+balisage ADK fermé et journalisation des abstentions. Le test stdio officiel
 reste une validation distincte du protocole. Les E2E de `long/test_adk_agent.py`
 vérifient le routage vers types, identité, CT avec version et capacités avec
 intervalle ; ils nécessitent Qwen local avec un contexte de 16384 tokens et
@@ -169,7 +183,10 @@ exécuter d'agent : une proposition réparée reste diagnostique, mais un appel
 incorrect, un résultat en erreur ou une valeur absente de la réponse échoue.
 Les niveaux numériques absents des conditions d'évolution et les noms anglais
 ajoutés sont aussi détectés, en utilisant les retours MCP bruts pour les
-traductions masquées par ADK. Ces contrôles typés ne constituent pas une
+traductions masquées par ADK. Un nom français contenant un mot anglais n'est
+pas un ajout, et un rang de liste sur la ligne suivante n'est pas une valeur
+de statistique. Le diagnostic de proposition compare les arguments de Qwen
+complétés par les défauts du schéma : un argument omis vaut son défaut. Ces contrôles typés ne constituent pas une
 validation exhaustive de toutes les affirmations possibles en langage libre.
 `unit/test_explicit_pokemon_constraints.py` injecte un catalogue de noms pour
 vérifier substitutions, formes, ambiguïtés, classifications et listes simples.

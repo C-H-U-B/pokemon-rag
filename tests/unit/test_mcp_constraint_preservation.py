@@ -173,3 +173,9 @@ def test_extract_level_range_between_levels() -> None:
     assert constraints.explicit_game is True
     assert constraints.version_ambiguous is False
     assert constraints.version_group == "red-blue"
+
+
+def test_common_word_champions_is_not_a_game_but_the_full_title_is():
+    from pokemon_rag.constraints.query_constraints import extract_version_group
+    assert extract_version_group("Quels Pokémon utilisent les champions d'arène ?") == (None, False)
+    assert extract_version_group("Quelles capacités apprend-il dans Pokémon Champions ?") == ("champions", False)

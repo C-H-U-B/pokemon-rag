@@ -47,10 +47,12 @@ l'appel requis. `pokemon_pokedex_identity` reste destiné au numéro d'un Pokém
 déjà nommé. Les numéros régionaux ou multiples reconnus sont refusés, sans SQLite
 dans le guard. La protection porte sur l'appel d'outil, pas sur le texte final.
 Les nouveaux outils acceptent jeux, formes et niveaux ; le guard conserve leurs
-filtres et impose `level-up` avec des bornes de niveau. Les instructions dirigent
-les recherches croisées et comptages vers `pokemon_search`, le movepool filtré
-vers `pokemon_moves`, et exigent le signalement d'une liste partielle ou d'un
-catalogue incomplet. Les talents sont reportés. Voir les
+filtres et impose `level-up` avec des bornes de niveau. Les instructions donnent
+la convention de direction : Pokémon nommé vers un outil prenant `pokemon`,
+propriétés ou numéro sans nom vers `pokemon_search`. Elles exigent le
+signalement d'une liste partielle ou d'un catalogue incomplet. Le choix entre
+`pokemon_moves` et les outils spécialisés est porté par leurs descriptions.
+Les talents sont reportés. Voir les
 [contrats structurés](../structured/README.md#recherche-pokémon-et-movepool-filtrable-via-mcp).
 Pour un classement reconnu, le guard restaure statistique, ordre, mode de
 superlatif ou top N et catégorie Méga. Il retire les types inventés et conserve
@@ -85,7 +87,28 @@ champ `*_fr` correspondant est renseigné, sauf demande explicite d'anglais.
 Les noms sans traduction française sont conservés ;
 les réponses originales du serveur MCP restent inchangées.
 Les instructions exigent pour chaque classement le nom français et la valeur
-`base_stat_value` avec `stat_name_fr`, ainsi que le signalement des ex aequo.
+de la statistique, ainsi que le signalement des ex aequo.
+Elles interdisent aussi d'écrire un identifiant technique ou un nom de champ,
+et de contredire un résultat de mémoire.
+
+`AGENT_INSTRUCTION` ne contient que les règles communes à tous les outils :
+faits prouvés, noms français recopiés de la question, contraintes transmises
+sans ajout, présentation de la réponse. Les règles propres à un outil ou à un
+argument sont dans le catalogue MCP, seul texte proche de l'argument que le
+modèle reçoit après abrègement : voir le [guide MCP](../mcp/README.md).
+Ces textes orientent la proposition de Qwen sans la garantir ; le guard reste
+la protection déterministe.
+
+Un nom rare peut encore être remplacé dans la proposition, par exemple
+Gouroutan proposé comme Gourgeist. La question arrive intacte au modèle et
+aucun texte du contexte ne contient le nom substitué. Des sondes manuelles à
+température 0 montrent que la substitution apparaît avec la liste complète
+d'arguments d'un outil, sans qu'un argument en soit seul responsable. Demander
+de recopier le nom « tel qu'écrit » ne suffisait pas ; préciser que l'argument
+est le nom français recopié de la question l'a supprimée dans ces sondes.
+Cette précision est dans l'instruction : la répéter dans la description de
+l'argument des huit outils dépasserait le budget de requête. Les sondes portent
+sur quelques noms et peu d'essais ; le guard continue de réparer ces propositions.
 
 Après une erreur, une entrée manquante ou un résultat vide, l'agent est instruit
 de rechercher via un autre outil approprié si les contraintes le permettent,
@@ -114,6 +137,13 @@ avec une réduction supplémentaire des résultats destinés au modèle.
 
 ## Budget de contexte
 
+Quatre étapes sont distinctes. La **réponse MCP** reste riche et identique pour
+tous les clients. L'**adaptation ADK** en retire la copie textuelle. La
+**projection** ne garde pour le modèle que les faits utiles à la question. Le
+**budget** mesure enfin la requête complète et décide d'une abstention locale.
+Les trois dernières vivent dans `context_budget.py` et ne modifient jamais
+l'objet reçu du serveur.
+
 `context_budget.py` retire la copie textuelle des données MCP structurées et
 borne chaque résultat destiné à ADK à 3000 octets UTF-8. Les listes sont
 réduites avec un signalement explicite et leurs totaux conservés. Un résultat
@@ -122,21 +152,36 @@ Cette adaptation ne change pas les réponses de l'API MCP.
 Les recherches Pokémon sont projetées avant le seuil : noms français et valeurs,
 numéro national lorsque demandé, comptes, pagination et signal de couverture.
 La liste des exceptions de catalogue et les identifiants techniques sont retirés.
+Dans un classement, la valeur de chaque ligne porte le nom français de sa
+statistique, par exemple `{"name_fr": "Regieleki", "Vitesse": 200}` : le modèle
+n'a pas à relier une clé technique à la question. La réponse MCP garde
+`base_stat_value`.
+Le movepool filtré de `pokemon_moves` perd ses identifiants techniques et
+garde tous les faits de chaque capacité : nom, type, puissance, précision, PP,
+catégorie et méthodes, libellées en français pour les quatre méthodes courantes.
+Si la page dépasse le seuil, seuls les faits demandés par la question ou
+filtrés par l'appel sont gardés avant toute coupe de lignes ; un movepool
+complet tient ainsi par ses noms. La coupe reste signalée par
+`context_truncated`, `truncated`, `has_more` et les totaux.
 Les movepools perdent leurs IDs et répétitions du jeu unique ; les CT conservent
 leur libellé français sans répéter le numéro. Les libellés français des jeux connus
 sont ajoutés sans changer l'API MCP. Les seuils restent identiques.
 
-Avant chaque appel, les descriptions d'outils sont abrégées sans modifier
-leurs paramètres et la sortie est limitée à 1024 tokens. Les annotations de
-titres des schémas sont retirées ; enums, bornes, propriétés, valeurs par défaut
-et descriptions d'arguments sont conservées. Au-delà de 12000 octets
+Avant chaque appel, les descriptions d'outils sont abrégées en gardant fermé
+le balisage qu'ADK pose autour des textes venus d'un serveur MCP, et la sortie
+est limitée à 1024 tokens. Dans la vue du modèle, les annotations de titres sont
+retirées et un argument facultatif décrit comme « type ou null, défaut null »
+devient son type simple ; enums, bornes, propriétés, défauts non nuls, arguments
+requis et descriptions d'arguments sont conservés. Le schéma MCP n'est pas modifié.
+Cette simplification libère de quoi garder le catalogue après un refus du guard,
+pour que le modèle puisse réessayer. Au-delà de 12000 octets
 d'instructions, messages et schémas sérialisés, ou après quatre appels
 dans la même invocation, le callback renvoie une abstention locale. Il ne
 supprime aucune contrainte utilisateur. Ce budget en octets est conservateur
 pour la fenêtre de 16384 tokens ; ce n'est pas un comptage exact du tokeniseur.
 
 Les classements utilisent `pokemon_search` avec les filtres demandés,
-`sort_by`, `sort_order` et `limit`. Un superlatif sans quantité, singulier ou pluriel, utilise
+`sort_by`, `sort_order` et `limit`, décrits dans le schéma de l'outil. Un superlatif sans quantité, singulier ou pluriel, utilise
 `best_only=true` et doit signaler les ex aequo ; un top N conserve
 `best_only=false`. Toutes les Méga utilisent `form_category="mega"`.
 Les six statistiques et leur total sont classés en SQL, sans modificateurs
@@ -147,8 +192,14 @@ reçoit les faits et l'historique sans le catalogue d'outils. Pour un superlatif
 tous les gagnants doivent être présents ; pour un top N, la page demandée suffit.
 Les erreurs, les résultats tronqués par ADK et les gagnants manquants conservent
 les outils. Le plafond de contexte et le nombre maximal d'appels restent inchangés.
-Cela s'applique aussi aux listes simples et aux réponses complètes des outils
-d'identité, de types, d'évolution et de movepool historiques.
+Cela s'applique aussi aux listes simples, aux pages complètes de
+`pokemon_moves` et aux réponses complètes des outils d'identité, de types, de
+capacités signature, d'évolution et de movepool historiques. Un movepool
+indisponible conserve le catalogue.
+Chaque abstention locale est journalisée avec sa raison (`request_too_large`
+ou `too_many_model_calls`) et les tailles mesurées, et chaque résultat d'outil
+avec sa taille MCP et sa taille projetée, sans contenu. Ces lignes passent par
+le logger `pokemon_rag.agent.context_budget`.
 Une demande composée reconnue ou documentaire conserve le catalogue pour les
 autres faits à obtenir ; les champs de ligne explicitement demandés restent
 dans la projection de recherche.
