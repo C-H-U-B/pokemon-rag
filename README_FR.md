@@ -2,190 +2,148 @@
 
 🇬🇧 [English version](README.md)
 
-Système local de questions-réponses sur Pokémon combinant requêtes structurées et Retrieval-Augmented Generation (RAG).
+Une chaîne de données complète, de la source brute au service interrogeable : deux sources hétérogènes sont collectées, nettoyées, modélisées et contrôlées, puis exposées par un moteur SQL et une recherche documentaire à des agents qui répondent en langage naturel avec un modèle local.
 
-Le système utilise deux sources de données complémentaires :
+Le projet tourne entièrement en local : SQLite, ChromaDB et un modèle Qwen 8B servi par LM Studio.
 
-- **PokéAPI + données Pokédex personnalisées**, stockées dans une base SQLite locale pour les requêtes structurées.
-- **Poképédia**, indexé localement pour les questions documentaires et ouvertes.
+## En bref
 
-L'application détermine automatiquement quelle source utiliser selon la question.
+| | |
+| --- | --- |
+| Sources | 24 fichiers CSV PokéAPI, un tableur de référence maintenu à la main, 1 216 pages Poképédia |
+| Base relationnelle | 30 tables, 51 index, 8 vues ; 638 000 lignes d'apprentissage de capacités sur 32 groupes de jeux |
+| Référentiel | 1 025 espèces, 1 351 Pokémon, 1 579 formes, 937 capacités |
+| Index documentaire | 36 280 fragments vectorisés |
+| Tests | 906 tests, dont 822 sans aucun modèle |
+| Campagne de bout en bout | 31 questions sur 31 réussies avec un modèle local de 8 milliards de paramètres |
 
-## Pourquoi Pokémon ?
+## Flux de données
 
-Pokémon constitue un cas d'étude particulièrement adapté à une architecture hybride mêlant données structurées et recherche documentaire.
+```mermaid
+flowchart LR
+    A[CSV PokéAPI] --> B[Base intermédiaire<br/>typée et indexée]
+    X[Tableur de référence] --> C
+    B --> C[Base applicative<br/>pokemon.db]
+    P[API Poképédia] --> Q[Pages brutes]
+    Q --> R[Markdown nettoyé]
+    R --> S[Index vectoriel<br/>ChromaDB]
+    C --> E[Moteur SQL]
+    S --> F[Recherche hybride]
+    E --> M[Serveur MCP<br/>10 outils]
+    F --> M
+    E --> G[Graphe LangGraph]
+    F --> G
+    M --> H[Agent ADK + guard]
+    H --> W[Interface Web]
+```
 
-Avec **1 025 espèces** dans le Pokédex national, auxquelles s'ajoutent de nombreuses formes alternatives, Poképédia fournit plus d'un millier de pages contenant des informations textuelles sur la biologie, l'apparence, les inspirations, l'histoire ou encore les apparitions des Pokémon.
+## La chaîne de données
 
-Cela permet de travailler sur un corpus suffisamment important pour que la recherche documentaire constitue un véritable problème de RAG.
+### Données structurées : PokéAPI et tableur de référence
 
-En parallèle, l'univers Pokémon contient une grande quantité de données naturellement structurées : statistiques, types, talents, capacités, niveaux d'apprentissage, CT, versions des jeux, évolutions, objets ou encore localisations. Ces informations se prêtent particulièrement bien à une représentation relationnelle avec PokéAPI et SQLite.
+| Étape | Script | Ce qu'elle fait |
+| --- | --- | --- |
+| Collecte | `scripts/pokeapi/download_pokeapi.py` | Télécharge les CSV ; un fichier déjà présent n'est pas retéléchargé, et l'écriture passe par un fichier temporaire |
+| Base intermédiaire | `scripts/pokeapi/build_pokeapi_db.py` | Importe les CSV avec des colonnes typées, crée les index et les vues de libellés |
+| Base applicative | `scripts/pokeapi/build_pokemon_db.py` | Lit le tableur, relie chaque ligne aux identifiants PokéAPI et produit la vue `custom_pokedex` |
 
-Le projet permet ainsi d'expérimenter trois approches complémentaires :
+Le rapprochement entre le tableur et PokéAPI est le point délicat : les deux sources ne nomment ni ne découpent les formes de la même façon. Chaque ligne reçoit un statut de rapprochement, et les formes sans correspondance sont signalées plutôt que masquées.
 
-- interrogation déterministe de données structurées ;
-- recherche documentaire par RAG ;
-- combinaison des deux approches.
+### Données documentaires : Poképédia
 
-## Architecture
+| Étape | Script | Ce qu'elle fait |
+| --- | --- | --- |
+| Collecte | `scripts/pokepedia/download.py` | Interroge l'API du wiki avec un délai entre les requêtes ; une exécution interrompue reprend sans retélécharger |
+| Nettoyage | `scripts/pokepedia/clean.py` | Convertit la syntaxe wiki en Markdown en conservant la hiérarchie des sections |
+| Indexation | `scripts/pokepedia/ingest.py` | Découpe par section puis par taille, calcule les embeddings et alimente ChromaDB avec des identifiants de fragments déterministes |
 
-Trois chemins de traitement sont disponibles :
+Chaque fragment garde le Pokémon, le fichier source et le chemin de section dont il provient, ce qui permet de reconstruire une section complète au moment de la recherche.
 
-- **STRUCTURED** — interroge la base SQLite locale.
-- **RAG** — recherche les informations pertinentes dans le corpus Poképédia.
-- **HYBRID** — combine les données structurées et le contexte provenant de Poképédia.
+## Qualité des données
 
-Les requêtes structurées prennent actuellement en charge :
+- **Contrôles à la construction.** Chaque constructeur se termine par une validation qui interrompt la chaîne en cas d'anomalie : intégrité de la base, typage des colonnes de la plus grosse table, cohérence du rapprochement entre les feuilles française et anglaise, nombre d'espèces attendu.
+- **Tests sur les données réelles.** Le rapprochement, les formes par défaut, les évolutions et les capacités sont vérifiés sur la base construite.
+- **Tests sur catalogue contrôlé.** La logique SQL est testée sur de petites bases SQLite créées pour chaque test, avec des cas adverses : identifiants dans le désordre, valeurs nulles, égalités, formes manquantes.
+- **Isolation.** Les tests légers échouent s'ils ouvrent les bases du projet ou chargent un modèle. Le moteur SQL n'importe aucun client de modèle, ce qu'un test vérifie.
 
-- les évolutions et leurs conditions ;
-- les capacités apprises par niveau ;
-- les capacités apprises par CT ou CS ;
-- les méthodes d'apprentissage des capacités ;
-- les types, le numéro national et la génération d'introduction ;
-- les capacités signature et pseudo-signature.
+Une anomalie de données rencontrée en cours de route illustre l'intérêt de ces contrôles : le jeu le plus récent n'utilise qu'une seule méthode d'apprentissage, si bien qu'une recherche de capacités par niveau y renvoyait une liste vide pour plus de 300 Pokémon. La sélection du jeu tient désormais compte de la méthode demandée.
 
-Les profils personnalisés alimentent également les présentations générales.
+## Exposer les données
 
-Le pipeline RAG utilise une recherche hybride, une recherche tenant compte de la structure des sections et un reranking avant la génération de la réponse.
+- **Moteur SQL.** Des fonctions paramétrées couvrent les évolutions, les capacités, les types, la recherche multicritère et les classements par statistique. Les filtres, les tris, les totaux et les égalités sont calculés en SQL. Le modèle de langage ne produit jamais de SQL : il choisit une opération et ses arguments.
+- **Recherche documentaire.** Recherche lexicale et vectorielle combinées, prise en compte de la structure des sections, puis reclassement.
+- **Serveur MCP.** Dix outils exposent ces fonctions à n'importe quel client compatible.
 
-Un [agent ADK indépendant](src/pokemon_rag/agent/README.md) utilise Qwen local via
-LiteLLM et LM Studio. Ce parcours comporte un seul agent et expose
-les dix outils MCP ; le graphe et le client MCP existants restent disponibles.
-Son guard déterministe préserve les contraintes reconnues de niveaux, de jeux
-et de formes avant l'appel d'outil, en refusant les outils incompatibles.
-La configuration locale validée utilise une fenêtre Qwen de 16384 tokens dans
-LM Studio pour les dix schémas ; les prérequis sont dans le guide de l'agent.
+Trois façons de répondre à une question s'appuient sur ces mêmes données :
+
+| Parcours | Principe | Garanties |
+| --- | --- | --- |
+| Graphe LangGraph | Routage entre SQL, recherche documentaire ou les deux | Plan contraint, contrôle de fidélité de la réponse, reprises bornées, abstention, traces |
+| Client MCP | Boucle d'agent minimale écrite à la main | Contraintes explicites de la question préservées |
+| Agent ADK et interface Web | Le modèle choisit les outils, un contrôle déterministe vérifie chaque appel | Arguments corrigés ou appel refusé, budget de contexte mesuré |
+
+## Fiabiliser un petit modèle
+
+Un modèle de 8 milliards de paramètres se trompe souvent sur les arguments : il oublie un filtre, invente une borne, remplace un nom rare par un nom plus courant. Plutôt que de lui faire confiance, un contrôle déterministe extrait les contraintes de la question et les compare à l'appel proposé avant son exécution.
+
+Résultats de la campagne de 31 questions, avant et après les derniers travaux de fiabilité :
+
+| Mesure | Avant | Après |
+| --- | --- | --- |
+| Questions réussies | 24 | 31 |
+| Appels corrects dès la proposition du modèle | 15 | 30 |
+| Réponses abandonnées pour dépassement de contexte | 5 | 0 |
+
+Chaque cause a été isolée avant d'être corrigée, en distinguant erreur de données, erreur de test et erreur d'orchestration. Le récit complet est dans [l'historique de développement](DEVELOPMENT_FR.md).
 
 ## Technologies
 
-- Python
-- LangGraph
-- SQLite
-- ChromaDB
-- Sentence Transformers
-- BM25
-- CrossEncoder reranking
-- LM Studio
-- LLM locaux
-- PokéAPI
-- Poképédia
+Python, SQLite, ChromaDB, Sentence Transformers, BM25, reclassement par CrossEncoder, LangGraph, Google ADK, Model Context Protocol, Gradio, LM Studio, pytest, ruff.
 
-## Structure du projet
+## Lancer le projet
 
-```text
-pokemon-rag/
-├── src/pokemon_rag/    # application Python
-│   └── constraints/    # extraction commune des formes, jeux et niveaux
-├── scripts/            # préparation des données, batch et analyse
-├── tests/              # tests isolés et validations avec ressources locales
-├── benchmarks/         # évaluations et références factuelles
-├── docs/               # guides de contribution et de transmission
-├── data/               # ressources locales, hors versionnement
-└── DEVELOPMENT_FR.md   # historique de développement
-```
-
-Les bases de données générées, les pages Poképédia téléchargées et les index vectoriels ne sont pas stockés dans le dépôt Git.
-
-## Installation
-
-Le [guide des contraintes](src/pokemon_rag/constraints/README.md) décrit les extracteurs partagés et leurs limites.
-
-Créer et activer un environnement Python, puis installer les dépendances :
+Prérequis : Python 3.10 ou plus récent, et LM Studio avec `qwen/qwen3-vl-8b` (fenêtre de contexte de 16 384 tokens) pour les parcours qui appellent un modèle.
 
 ```bash
 pip install -e .
 ```
 
-LM Studio doit être lancé localement avec les modèles attendus par l'application.
-L'installation inclut Gradio, déclaré dans `pyproject.toml`, pour l'interface Web.
-
-## Construction des données
-
-Ces commandes préparent ou reconstruisent les ressources locales ; elles ne sont pas nécessaires au lancement si les données existent déjà. Lire [scripts/README.md](scripts/README.md) avant de les exécuter.
-
-Télécharger les données PokéAPI :
+Construire les données (voir [le guide des scripts](scripts/README.md) avant de relancer une construction, qui remplace les ressources existantes) :
 
 ```bash
 python scripts/pokeapi/download_pokeapi.py
-```
-
-Construire la base PokéAPI :
-
-```bash
 python scripts/pokeapi/build_pokeapi_db.py
-```
-
-Construire la base Pokémon unifiée :
-
-```bash
 python scripts/pokeapi/build_pokemon_db.py
-```
-
-Télécharger puis nettoyer le corpus Poképédia :
-
-```bash
 python scripts/pokepedia/download.py
 python scripts/pokepedia/clean.py
-```
-
-Construire l'index RAG :
-
-```bash
 python scripts/pokepedia/ingest.py
 ```
 
-## Lancement
-
-Pour la [conversation Web Gradio](src/pokemon_rag/web/README.md), avec Qwen
-disponible dans LM Studio et les données locales déjà préparées :
-
-```powershell
-python -m pokemon_rag.web.app
-```
-
-Le navigateur s'ouvre automatiquement. L'interface réutilise l'agent ADK,
-conserve la conversation à l'écran et affiche l'activité des outils et le chrono.
-Chaque question est envoyée à l'agent sans l'historique des messages précédents.
-
-Lancer LM Studio, charger les modèles locaux nécessaires, puis exécuter :
+Interface Web, puis graphe en ligne de commande :
 
 ```bash
+python -m pokemon_rag.web.app
 python -m pokemon_rag.graph.graph
 ```
 
-## Tests
+Tests sans modèle ni données locales, et contrôle statique :
 
-Les tests sont regroupés dans :
-
-```text
-tests/
+```bash
+python -m pytest -m "not real_data and not llm and not models"
+ruff check .
 ```
 
-Ils couvrent notamment :
+## Limites connues
 
-- la construction des données PokéAPI ;
-- le mapping entre le Pokédex personnalisé et PokéAPI ;
-- la base SQLite unifiée ;
-- les évolutions et leurs conditions ;
-- les requêtes sur les capacités ;
-- le moteur de requêtes structurées.
+- Les bases et le corpus ne sont pas versionnés : il faut les reconstruire pour faire tourner le projet.
+- Les étapes de construction se lancent à la main, dans l'ordre ci-dessus, et reconstruisent tout.
+- Aucune intégration continue n'est encore en place.
+- Les mesures de bout en bout dépendent d'un modèle local ; elles sont relancées manuellement.
 
 ## Documentation
 
-Consulter [le guide de navigation](docs/README.md) pour contribuer. Les [commandes de test](tests/README.md) distinguent les validations légères de celles nécessitant des ressources locales.
-
-La [carte d'architecture](ARCHITECTURE.md) décrit les flux actuels, les points
-d'entrée et les modules à modifier selon le comportement concerné.
-
-Le développement du projet, les choix d'architecture, les problèmes rencontrés et les différents tests sont détaillés dans :
-
-```text
-DEVELOPMENT_FR.md
-```
-
-Un historique anglais plus ancien, non synchronisé avec la version française,
-est disponible dans :
-
-```text
-DEVELOPMENT.md
-```
+- [Architecture](ARCHITECTURE.md) : flux, points d'entrée et frontières entre modules.
+- [Scripts et données](scripts/README.md) : chaînes de préparation.
+- [Moteur structuré](src/pokemon_rag/structured/README.md), [recherche documentaire](src/pokemon_rag/rag/README.md), [serveur MCP](src/pokemon_rag/mcp/README.md), [agent ADK](src/pokemon_rag/agent/README.md).
+- [Tests](tests/README.md) : quelle validation lancer selon la modification.
+- [Historique de développement](DEVELOPMENT_FR.md) : décisions, problèmes rencontrés et corrections, dans l'ordre chronologique.
