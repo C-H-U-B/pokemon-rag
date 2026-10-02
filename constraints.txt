@@ -1,0 +1,15 @@
+# Versions des dépendances directes validées en local, utilisées par l'intégration continue :
+#   pip install -e ".[dev]" -c constraints.txt
+# google-adk et litellm sont déjà fixés dans pyproject.toml.
+chromadb==1.5.9
+gradio==6.29.0
+langchain-text-splitters==1.1.2
+langgraph==1.2.11
+mcp==2.2.0
+numpy==2.4.6
+openai==2.54.0
+pandas==3.0.5
+pytest==9.1.1
+rank-bm25==0.2.2
+ruff==0.16.9
+sentence-transformers==6.0.1

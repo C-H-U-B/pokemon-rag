@@ -1,5 +1,7 @@
 # Pokémon RAG
 
+[![CI](https://github.com/C-H-U-B/pokemon-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/C-H-U-B/pokemon-rag/actions/workflows/ci.yml)
+
 🇬🇧 [English version](README.md)
 
 Une chaîne de données complète, de la source brute au service interrogeable : deux sources hétérogènes sont collectées, nettoyées, modélisées et contrôlées, puis exposées par un moteur SQL et une recherche documentaire à des agents qui répondent en langage naturel avec un modèle local.
@@ -65,6 +67,7 @@ Chaque fragment garde le Pokémon, le fichier source et le chemin de section don
 - **Tests sur les données réelles.** Le rapprochement, les formes par défaut, les évolutions et les capacités sont vérifiés sur la base construite.
 - **Tests sur catalogue contrôlé.** La logique SQL est testée sur de petites bases SQLite créées pour chaque test, avec des cas adverses : identifiants dans le désordre, valeurs nulles, égalités, formes manquantes.
 - **Isolation.** Les tests légers échouent s'ils ouvrent les bases du projet ou chargent un modèle. Le moteur SQL n'importe aucun client de modèle, ce qu'un test vérifie.
+- **Intégration continue.** À chaque push, GitHub Actions installe le projet sur une machine vierge, lance le contrôle statique et les 682 tests qui ne dépendent ni des données locales ni d'un modèle.
 
 Une anomalie de données rencontrée en cours de route illustre l'intérêt de ces contrôles : le jeu le plus récent n'utilise qu'une seule méthode d'apprentissage, si bien qu'une recherche de capacités par niveau y renvoyait une liste vide pour plus de 300 Pokémon. La sélection du jeu tient désormais compte de la méthode demandée.
 
@@ -137,7 +140,7 @@ ruff check .
 
 - Les bases et le corpus ne sont pas versionnés : il faut les reconstruire pour faire tourner le projet.
 - Les étapes de construction se lancent à la main, dans l'ordre ci-dessus, et reconstruisent tout.
-- Aucune intégration continue n'est encore en place.
+- L'intégration continue ne couvre pas les tests qui demandent les bases construites ou un modèle (224 sur 906).
 - Les mesures de bout en bout dépendent d'un modèle local ; elles sont relancées manuellement.
 
 ## Documentation

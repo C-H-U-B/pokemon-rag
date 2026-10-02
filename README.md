@@ -1,5 +1,7 @@
 # Pokémon RAG
 
+[![CI](https://github.com/C-H-U-B/pokemon-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/C-H-U-B/pokemon-rag/actions/workflows/ci.yml)
+
 🇫🇷 [Version française](README_FR.md)
 
 A complete data pipeline, from raw sources to a queryable service: two heterogeneous sources are collected, cleaned, modelled and validated, then exposed through a SQL engine and a document search to agents that answer in natural language with a local model.
@@ -65,6 +67,7 @@ Each chunk keeps the Pokémon, source file and section path it comes from, which
 - **Tests on real data.** Matching, default forms, evolutions and moves are checked against the built database.
 - **Tests on a controlled catalogue.** The SQL logic is tested on small SQLite databases created for each test, with adversarial cases: out-of-order identifiers, null values, ties, missing forms.
 - **Isolation.** Light tests fail if they open the project databases or load a model. The SQL engine imports no model client, which a test verifies.
+- **Continuous integration.** On every push, GitHub Actions installs the project on a clean machine, runs the static checks and the 682 tests that depend on neither local data nor a model.
 
 One data anomaly met along the way shows why these checks matter: the most recent game uses a single learning method, so a search for moves by level returned an empty list for more than 300 Pokémon. Game selection now takes the requested method into account.
 
@@ -137,7 +140,7 @@ ruff check .
 
 - The databases and corpus are not versioned: they must be rebuilt to run the project.
 - Build steps are launched by hand, in the order above, and rebuild everything.
-- No continuous integration is in place yet.
+- Continuous integration does not cover the tests that need the built databases or a model (224 of 906).
 - End-to-end measurements depend on a local model; they are rerun manually.
 
 ## Documentation

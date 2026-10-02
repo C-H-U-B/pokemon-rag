@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      # Aucun modèle ne doit être téléchargé : les tests retenus n'en chargent pas.
+      HF_HUB_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            constraints.txt
+
+      - name: Installer le projet
+        run: |
+          python -m pip install --upgrade pip
+          # PyTorch CPU seul : évite de télécharger les bibliothèques GPU.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]" -c constraints.txt
+
+      - name: Contrôle statique
+        run: ruff check .
+
+      - name: Tests sans données locales ni modèle
+        run: python -m pytest -m "not real_data and not llm and not models" -q

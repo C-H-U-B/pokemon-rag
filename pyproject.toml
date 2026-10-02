@@ -27,6 +27,9 @@ dependencies = [
     "gradio>=6.29,<7",
 ]
 
+[project.optional-dependencies]
+dev = ["ruff"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
