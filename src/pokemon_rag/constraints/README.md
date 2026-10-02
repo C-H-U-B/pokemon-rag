@@ -60,6 +60,8 @@ un texte destiné à l'utilisateur.
 | `extract_generation(question)` | Origine explicitement numérotée (`génération 4`, `4e génération`, `7G`) ou ordinal français de première à neuvième ; jamais déduite du jeu ; alternatives/intervalles reconnus refusés |
 | `extract_pokemon_types(question)` | Types littéraux après « de type » ou « Pokémon Eau/Vol » ; `all`, `any` pour un « ou » local, `exact` pour monotype/uniquement ; aucune déduction depuis résistance ou espèce |
 | `extract_move_constraints(question)` | Type et catégorie physique/spéciale/statut attachés à attaque/capacité ; ne transforme pas Attaque Spéciale en catégorie de capacité |
+| `names_learning_method(question)` | Vrai dès qu'un mot de méthode apparaît (CT/CS, niveau, œuf, reproduction, donneur, méthode, comment…) ; vocabulaire large, sans identifier la méthode |
+| `without_unnamed_learning_method(question, arguments)` | Retire `learning_method` si la question ne nomme aucune méthode ; ne restaure ni ne remplace jamais une méthode |
 | `extract_classifications(question)` | Filtres positifs indépendants légendaire et fabuleux/mythique ; négations/alternatives reconnues refusées |
 | `extract_explicit_constraints(question, known_version_groups=None)` | Objet `ExplicitConstraints` regroupant les résultats ; erreurs explicites pour les contraintes reconnues mais impossibles ou ambiguës |
 

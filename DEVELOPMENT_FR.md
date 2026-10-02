@@ -1161,3 +1161,37 @@ Les classements avaient perdu leurs valeurs dans les réponses : les projections
 l'instruction, annulée depuis. La valeur de chaque ligne porte maintenant le
 nom français de sa statistique, pour ne plus dépendre d'une clé technique.
 L'effet sur les réponses de Qwen reste à mesurer par la campagne manuelle.
+
+## 63. [Bug fix] Méthode d'apprentissage inventée retirée avant l'outil
+
+Une question de movepool filtré a reçu une seule capacité alors que trois
+répondaient à la demande. Qwen avait ajouté de lui-même la montée de niveau
+comme méthode d'apprentissage ; le guard réparait le nom, la catégorie et la
+borne inventée, mais laissait passer ce filtre que rien ne lui permettait de
+juger. La réponse restait fidèle au résultat reçu, donc l'erreur était invisible.
+
+Un extracteur reconnaît désormais si la question mentionne une méthode
+d'apprentissage. Pour le movepool filtré et la recherche de Pokémon, le guard
+ADK et la réconciliation du client MCP retirent une méthode que la question ne
+nomme pas. La règle est volontairement asymétrique : au moindre mot de méthode,
+la proposition du modèle est conservée, sans restauration ni remplacement.
+
+Un test avec le vrai runner reproduit l'appel observé et retrouve les trois
+capacités. Les cas de movepool de la campagne attendent maintenant l'absence de
+méthode, pour que cette invention apparaisse dans le diagnostic.
+
+## 64. [Bug fix] Jeu retenu quand une méthode d'apprentissage est demandée
+
+Dans Pokémon Champions, les capacités se choisissent directement dans un menu :
+les données n'y connaissent ni montée de niveau, ni CT, ni reproduction, seulement
+une méthode propre au jeu. Comme c'est le jeu le plus récent, le movepool filtré
+le retenait par défaut, et une demande de CT ou d'une plage de niveaux posée sans
+nommer de jeu renvoyait une liste vide pour les Pokémon qui y figurent.
+
+Quand une méthode d'apprentissage est demandée sans jeu, y compris par des bornes
+de niveau, le movepool filtré et la recherche de Pokémon retiennent désormais le
+dernier jeu où le Pokémon a cette méthode, comme le faisaient déjà les outils de
+CT et de capacités par niveau. Les filtres de type, de catégorie et de puissance
+ne changent toujours pas de jeu, et un jeu nommé reste strict. Le jeu et sa
+méthode sont aussi présentés en français au modèle, sous les noms « Pokémon
+Champions » et « entraînement ».

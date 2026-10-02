@@ -328,3 +328,11 @@ def test_budget_abstention_logs_its_reason_and_sizes_without_content(caplog):
 def test_latest_game_without_pair_title_is_named_in_french():
     result = bounded_tool_result(moves_response(2, version_group="champions"))
     assert result["version_group_fr"] == "Pokémon Champions"
+
+
+def test_champions_training_method_is_labelled_in_french():
+    data = moves_response(1, version_group="champions")
+    data["results"][0]["learning"] = [{"method":"train","level":0}, {"method":"xd-shadow","level":0}]
+    result = bounded_tool_result(data)
+    # Une méthode sans libellé connu garde son identifiant plutôt qu'une traduction inventée.
+    assert result["results"][0]["learning"] == [{"method":"entraînement"}, {"method":"xd-shadow"}]

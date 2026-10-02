@@ -22,6 +22,12 @@ de Tonnerre vers l'identifiant interne `thunderbolt`. L'interface reste françai
 - `get_level_up_moves` choisit aussi le dernier groupe avec des relations de
   montée de niveau, avant d'appliquer les bornes. `get_move_learning_methods`
   choisit le dernier movepool des formes résolues, avant le filtre de capacité.
+  `get_pokemon_moves` et `search_pokemon` appliquent la même idée à une méthode
+  demandée sans jeu, y compris par des bornes de niveau : ils retiennent le
+  dernier jeu où le Pokémon a cette méthode. Dans Pokémon Champions, tout
+  s'apprend par la seule méthode `train` ; sans cette règle, une demande de CT
+  ou de niveaux y trouverait une liste vide. Les filtres de type, catégorie et
+  puissance ne changent jamais de jeu, et un jeu explicite reste strict.
   Les jeux explicites restent stricts et la résolution des formes reste celle
   des outils historiques. Les trois fonctions exposent `all_versions=True`
   pour conserver l'historique ; ce mode est incompatible avec un jeu unique.

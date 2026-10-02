@@ -279,3 +279,39 @@ def test_more_than_two_pokemon_types_cannot_be_silently_shortened():
     args = {"types":["water","flying"]}
     assert guard("Pokémon de type Eau et Vol et Feu", "pokemon_search", args)["error"] == "invalid_explicit_constraints"
     assert args == {"types":["water","flying"]}
+
+
+@pytest.mark.parametrize("question,name,args,expected", [
+    ("Quelles capacités spéciales de type Eau d'au moins 80 de puissance Nigirigon peut-il apprendre ?", "pokemon_moves",
+     {"pokemon":"Nigirigon","move_type":"water","min_power":80,"learning_method":"level-up"},
+     {"pokemon":"Nigirigon","move_type":"water","damage_class":"special","min_power":80,"max_power":None}),
+    ("Quels Pokémon peuvent apprendre une capacité de type Eau d'au moins 80 de puissance ?", "pokemon_search",
+     {"move_type":"water","min_power":80,"learning_method":"machine"}, None),
+])
+def test_learning_method_absent_from_the_question_is_removed(question, name, args, expected):
+    assert guard(question, name, args) is None
+    assert "learning_method" not in args
+    if expected is not None:
+        assert args == expected
+
+
+@pytest.mark.parametrize("question,method", [
+    ("Quelles capacités Krakos apprend-il par CT ?", "machine"),
+    ("Quelles capacités Krakos peut-il apprendre grâce à la CT12 ?", "machine"),
+    ("Quelles capacités Krakos apprend-il par reproduction ?", "egg"),
+    ("Quelles capacités œuf Krakos peut-il apprendre ?", "egg"),
+    ("Quelles capacités Krakos apprend-il auprès d'un donneur de capacités ?", "tutor"),
+    ("Quelles capacités Krakos apprend-il en montant de niveau ?", "level-up"),
+    ("Par quelle méthode Krakos apprend-il ses capacités de type Eau ?", "tutor"),
+    ("Comment Krakos apprend-il ses capacités de type Eau ?", "egg"),
+])
+def test_learning_method_is_kept_as_soon_as_the_question_mentions_a_method(question, method):
+    args = {"pokemon":"Krakos","learning_method":method}
+    assert guard(question, "pokemon_moves", args) is None
+    assert args["learning_method"] == method
+
+
+def test_level_bounds_still_force_level_up_after_the_method_check():
+    args = {"pokemon":"Krakos"}
+    assert guard("Quelles capacités Krakos apprend-il entre les niveaux 10 et 20 ?", "pokemon_moves", args) is None
+    assert (args["learning_method"], args["min_level"], args["max_level"]) == ("level-up", 10, 20)

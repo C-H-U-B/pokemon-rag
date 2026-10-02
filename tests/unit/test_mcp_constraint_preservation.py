@@ -179,3 +179,13 @@ def test_common_word_champions_is_not_a_game_but_the_full_title_is():
     from pokemon_rag.constraints.query_constraints import extract_version_group
     assert extract_version_group("Quels Pokémon utilisent les champions d'arène ?") == (None, False)
     assert extract_version_group("Quelles capacités apprend-il dans Pokémon Champions ?") == ("champions", False)
+
+
+def test_client_removes_learning_method_absent_from_the_question_and_keeps_a_named_one():
+    moves = tool("pokemon_moves", "pokemon", "damage_class", "learning_method")
+    _, args = reconcile_tool_call("Quelles capacités physiques Krakos peut-il apprendre ?", "pokemon_moves",
+        {"pokemon": "Krakos", "damage_class": "physical", "learning_method": "level-up"}, [moves])
+    assert args == {"pokemon": "Krakos", "damage_class": "physical"}
+    _, args = reconcile_tool_call("Quelles capacités physiques Krakos apprend-il par CT ?", "pokemon_moves",
+        {"pokemon": "Krakos", "damage_class": "physical", "learning_method": "machine"}, [moves])
+    assert args["learning_method"] == "machine"

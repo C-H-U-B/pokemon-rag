@@ -231,6 +231,21 @@ def extract_move_constraints(question: str) -> dict:
             **({"move_type":types.pop()} if types else {})}
 
 
+def names_learning_method(question: str) -> bool:
+    """Vocabulaire volontairement large : au moindre mot de méthode, le choix du modèle est gardé."""
+    return bool(re.search(
+        r"(?:^|-)(?:c[ts]\d*|dt\d*|machines?|capsules?|disques?|niveaux?|montee|montant|monter|level-up|"
+        r"o?eufs?|ufs?|reproduction|parents?|herit[a-z]*|tuteurs?|donneurs?|maitres?|methodes?|"
+        r"comment|entrainement)(?=-|$)", normalize(question)))
+
+
+def without_unnamed_learning_method(question: str, arguments: dict) -> dict:
+    """Retire un learning_method que la question ne nomme pas ; ne restaure ni ne remplace rien."""
+    if arguments.get("learning_method") is None or names_learning_method(question):
+        return arguments
+    return {key: value for key, value in arguments.items() if key != "learning_method"}
+
+
 def extract_pokemon_types(question: str) -> dict:
     """Types littéraux d'un groupe de Pokémon, hors clauses de capacités."""
     text = normalize(question)

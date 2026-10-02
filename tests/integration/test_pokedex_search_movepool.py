@@ -300,6 +300,46 @@ def test_no_historical_union_and_no_fallback_after_filter(catalogue):
     assert absent["movepool_available"] is False
 
 
+@pytest.fixture
+def menu_only_latest_game(catalogue):
+    """Jeu le plus récent où tout s'apprend par une seule méthode propre, sans niveau ni CT."""
+    with sqlite3.connect(engine.DB_PATH) as conn:
+        conn.executescript("""
+        INSERT INTO pokemon_move_methods VALUES (12,'train');
+        INSERT INTO version_groups VALUES (50,'menu',9,4);
+        INSERT INTO pokemon_moves VALUES (369,5,50,12,0),(369,6,50,12,0);
+        """)
+
+
+@pytest.mark.parametrize("filters,version,expected", [
+    ({}, "menu", ["Cascade", "Hydrocanon"]),
+    # Une méthode demandée sans jeu : dernier jeu où ce Pokémon a cette méthode.
+    ({"learning_method":"machine"}, "middle", ["Hydrocanon"]),
+    ({"min_level":10,"max_level":40}, "middle", ["Cascade"]),
+    ({"learning_method":"train"}, "menu", ["Cascade", "Hydrocanon"]),
+    # Méthode absente de tous les jeux : pas de jeu inventé, dernier movepool et liste vide.
+    ({"learning_method":"egg"}, "menu", []),
+    # Un filtre sur les propriétés d'une capacité ne change jamais de jeu.
+    ({"move_type":"Combat"}, "menu", []),
+    ({"move_type":"Combat","learning_method":"tutor"}, "middle", ["Frappe Atlas"]),
+])
+def test_requested_method_selects_latest_game_having_it(menu_only_latest_game, filters, version, expected):
+    result = engine.get_pokemon_moves("Relicanth", **filters)
+    assert (result["version_group"], names(result)) == (version, expected)
+    assert result["movepool_available"] is True and result["version_group_explicit"] is False
+
+
+def test_explicit_game_stays_strict_and_search_uses_the_same_selection(menu_only_latest_game):
+    strict = engine.get_pokemon_moves("Relicanth", version_group="menu", learning_method="machine")
+    assert (strict["version_group"], strict["total_count"]) == ("menu", 0)
+    by_machine = engine.search_pokemon(move_type="Eau", learning_method="machine")
+    assert [(row["name_fr"], row["version_group"]) for row in by_machine["results"]] == [("Relicanth", "middle")]
+    any_method = engine.search_pokemon(types=["Roche"], move_type="Eau")
+    assert [(row["name_fr"], row["version_group"]) for row in any_method["results"]] == [("Relicanth", "menu")]
+    by_level = engine.search_pokemon(types=["Roche"], min_level=10, max_level=40)
+    assert [(row["name_fr"], row["version_group"]) for row in by_level["results"]] == [("Relicanth", "middle")]
+
+
 def test_unique_moves_preserve_learning_methods(catalogue):
     result = engine.get_pokemon_moves("Feunard", move_type="Feu", damage_class="special")
     assert names(result) == ["Lance-Flammes"]

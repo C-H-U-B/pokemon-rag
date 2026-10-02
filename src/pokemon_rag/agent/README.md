@@ -58,7 +58,12 @@ Pour un classement reconnu, le guard restaure statistique, ordre, mode de
 superlatif ou top N et catégorie Méga. Il retire les types inventés et conserve
 les types demandés, sans comparer de valeurs. La reconnaissance et ses limites
 sont décrites dans les [contraintes](../constraints/README.md).
-Une liste simple désactive un `best_only` inventé. Les mentions positives de
+Une liste simple désactive un `best_only` inventé. Pour `pokemon_moves` et
+`pokemon_search`, un `learning_method` proposé alors que la question ne nomme
+aucune méthode d'apprentissage est retiré : il réduirait le résultat sans que
+l'utilisateur l'ait demandé. Dès qu'un mot de méthode apparaît, la proposition
+du modèle est conservée telle quelle ; une formulation implicite hors de ce
+vocabulaire peut donc faire retirer un filtre légitime. Les mentions positives de
 légendaire et de fabuleux restaurent leurs filtres indépendants ; les cas
 négatifs ou alternatifs reconnus restent refusés.
 Les questions d'apparence, comportement, habitat, origine ou histoire sont
@@ -158,7 +163,8 @@ n'a pas à relier une clé technique à la question. La réponse MCP garde
 `base_stat_value`.
 Le movepool filtré de `pokemon_moves` perd ses identifiants techniques et
 garde tous les faits de chaque capacité : nom, type, puissance, précision, PP,
-catégorie et méthodes, libellées en français pour les quatre méthodes courantes.
+catégorie et méthodes, libellées en français pour les quatre méthodes courantes
+et pour l'entraînement, seule méthode de Pokémon Champions.
 Si la page dépasse le seuil, seuls les faits demandés par la question ou
 filtrés par l'appel sont gardés avant toute coupe de lignes ; un movepool
 complet tient ainsi par ses noms. La coupe reste signalée par

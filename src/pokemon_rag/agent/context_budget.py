@@ -30,7 +30,7 @@ _FENCE_END = "<<<END_UNTRUSTED_TOOL_DESCRIPTION>>>"
 
 # Les autres méthodes PokéAPI, rares, gardent leur identifiant.
 _METHOD_NAMES_FR = {"level-up": "montée de niveau", "machine": "CT/CS", "egg": "reproduction",
-                    "tutor": "donneur de capacités"}
+                    "tutor": "donneur de capacités", "train": "entraînement"}
 _PAGINATED_OPERATIONS = {"pokemon_search": "search_pokemon", "pokemon_moves": "get_pokemon_moves"}
 
 
@@ -118,7 +118,7 @@ def _requested_move_fields(question: str, args: dict) -> set[str]:
     if asked("pp(?:-|$)"):
         fields.add("pp")
     if filtered("learning_method", "min_level", "max_level") or asked(
-            "niveau|methode|comment|ct(?:-|$)|cs(?:-|$)|reproduction|donneur"):
+            "niveau|methode|comment|ct(?:-|$)|cs(?:-|$)|reproduction|donneur|entrainement"):
         fields.add("learning")
     return fields
 

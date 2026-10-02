@@ -13,6 +13,7 @@ from mcp.client.stdio import stdio_client
 
 from pokemon_rag.constraints.query_constraints import (
     extract_explicit_constraints, extract_national_pokedex_number, normalize, reconcile_search_args,
+    without_unnamed_learning_method,
 )
 
 
@@ -206,6 +207,8 @@ def reconcile_tool_call(
     """Réconcilie le choix du LLM avec les contraintes certaines de la question."""
     constraints = extract_explicit_constraints(question)
     reconciled = dict(arguments)
+    if tool_name in {"pokemon_moves", "pokemon_search"}:
+        reconciled = without_unnamed_learning_method(question, reconciled)
     try:
         national_number = extract_national_pokedex_number(question)
         if tool_name == "pokemon_search":

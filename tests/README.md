@@ -154,7 +154,9 @@ Il utilise `asyncio.run` et ne nécessite pas `pytest-asyncio`.
 `integration/test_pokedex_search_movepool.py` vérifie le moteur avec SQLite réel
 et un catalogue temporaire contrôlé : filtres croisés, catégorie indépendante
 de la puissance NULL, formes, sélection des versions avant filtrage, absence
-d'union historique, déduplication et pagination. Les cas `real_data` vérifient
+d'union historique, déduplication et pagination. Un jeu récent à méthode unique
+vérifie qu'une méthode ou des niveaux demandés retiennent le dernier jeu qui les
+propose, sans changer de jeu pour un filtre de type ni assouplir un jeu explicite. Les cas `real_data` vérifient
 Relicanth, les fabuleux de troisième génération, Frappe Atlas et les formes
 d'Arceus sur la base locale.
 Le test serveur appelle aussi `pokemon_search` et `pokemon_moves` via stdio,
@@ -195,6 +197,10 @@ aux arguments corrects, oubliés et contradictoires, avec un catalogue injecté.
 Il couvre les nombres de domaines distincts, types de Pokémon/capacités,
 catégories, bornes, régions multiples et titres complets de jeux. Les refus
 doivent préserver la proposition d'origine et exposer les arguments requis.
+Il vérifie aussi qu'une méthode d'apprentissage absente de la question est
+retirée, et conservée dès que la question en mentionne une. Les quatre cas
+`moves-*` de la campagne attendent `learning_method` absent, pour qu'une
+méthode inventée apparaisse dans le diagnostic de proposition.
 `integration/test_mcp_server.py` vérifie aussi guard → vrai MCP stdio → SQLite :
 contraintes réparées acceptées par le schéma, résultats effectivement filtrés
 et reprise explicite après un refus de recherche par numéro, sans modèle.

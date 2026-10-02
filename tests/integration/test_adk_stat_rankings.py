@@ -183,7 +183,7 @@ async def _run_simulated(question, tool, args):
     ("Quelles capacités physiques Sovkipou peut-il apprendre ?", {"pokemon":"Sovkipou","damage_class":"physical"}, 8),
     # Catégorie oubliée et nom remplacé : le guard répare, la petite page doit ensuite être formulée.
     ("Quelles capacités spéciales de type Eau d'au moins 80 de puissance Nigirigon peut-il apprendre ?",
-     {"pokemon":"Nigirigon","move_type":"water","min_power":80}, 3),
+     {"pokemon":"Nigirigor","move_type":"Water","min_power":80,"max_power":1000,"learning_method":"level-up"}, 3),
     ("Quelles capacités d'au moins 100 de puissance Gouroutan peut-il apprendre ?", {"pokemon":"Gourgeist","min_power":100}, 8),
 ])
 def test_small_filtered_movepool_reaches_formulation_with_every_fact(question, args, count):

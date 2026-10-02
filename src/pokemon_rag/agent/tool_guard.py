@@ -6,7 +6,7 @@ import re
 from pokemon_rag.constraints.query_constraints import (
     ExplicitConstraints,
     extract_explicit_constraints, reconcile_search_args,
-    extract_named_pokemon, is_named_identity_question,
+    extract_named_pokemon, is_named_identity_question, without_unnamed_learning_method,
     normalize,
     VERSION_ALIASES,
 )
@@ -171,6 +171,8 @@ def before_tool_guard(
         if tool_name == "pokemon_search":
             corrected = reconcile_search_args(question, corrected)
         corrected.update(required)
+        if tool_name in MOVE_FILTER_TOOLS:
+            corrected = without_unnamed_learning_method(question, corrected)
         if constraints.level_bounds is not None and tool_name in MOVE_FILTER_TOOLS:
             if corrected.get("learning_method") not in (None, "level-up"):
                 return {"error":"incompatible_learning_method", "required_arguments":required,

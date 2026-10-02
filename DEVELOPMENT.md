@@ -1102,3 +1102,36 @@ and after, the cause was a rewording of the instruction, since reverted. Each
 row's value now carries the French name of its statistic, so it no longer
 depends on a technical key. The effect on Qwen's answers remains to be measured
 by the manual campaign.
+
+## 63. [Bug fix] Invented learning method removed before the tool
+
+A filtered movepool question received a single move although three matched the
+request. Qwen had added level-up as a learning method on its own; the guard
+repaired the name, the category and the invented bound, but let through this
+filter that nothing allowed it to judge. The answer stayed faithful to the
+result it received, so the error was invisible.
+
+An extractor now recognises whether the question mentions a learning method.
+For the filtered movepool and the Pokémon search, the ADK guard and the MCP
+client reconciliation remove a method the question does not name. The rule is
+deliberately asymmetric: at the slightest method word, the model's proposal is
+kept, with no restoration or replacement.
+
+A test with the real runner reproduces the observed call and gets the three
+moves back. The campaign's movepool cases now expect no method, so that this
+invention shows up in the diagnostic.
+
+## 64. [Bug fix] Game selected when a learning method is requested
+
+In Pokémon Champions, moves are picked directly from a menu: the data there has
+no level-up, machine or egg moves, only a method specific to the game. As it is
+the most recent game, the filtered movepool selected it by default, and a request
+for machines or a level range asked without naming a game returned an empty list
+for the Pokémon present in it.
+
+When a learning method is requested without a game, including through level
+bounds, the filtered movepool and the Pokémon search now select the latest game
+in which the Pokémon has that method, as the machine and level-up tools already
+did. Type, category and power filters still never change the game, and a named
+game stays strict. The game and its method are also presented to the model in
+French, as "Pokémon Champions" and "entraînement".

@@ -134,15 +134,23 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
-def _latest_movepool_sql(pokemon_expression: str) -> str:
-    """Dernier jeu contenant un movepool, avant tout filtre de capacité.
+def _latest_movepool_sql(pokemon_expression: str, method_id: int | None = None) -> str:
+    """Dernier jeu contenant un movepool, avant tout filtre de propriété de capacité.
 
-    pokemon_expression est une expression interne constante, jamais une entrée utilisateur.
+    Avec une méthode d'apprentissage demandée : dernier jeu où ce Pokémon a cette
+    méthode, car le jeu le plus récent peut n'en proposer qu'une autre. Sans aucun
+    jeu pour cette méthode, le dernier movepool reste retenu et la liste est vide.
+    pokemon_expression est une expression interne constante et method_id un
+    identifiant lu en base, jamais une entrée utilisateur.
     """
-    return f"""(SELECT available.version_group_id FROM pokemon_moves available
+    def latest(condition: str) -> str:
+        return f"""(SELECT available.version_group_id FROM pokemon_moves available
         JOIN version_groups latest ON latest.id = available.version_group_id
-        WHERE available.pokemon_id = {pokemon_expression}
+        WHERE available.pokemon_id = {pokemon_expression}{condition}
         ORDER BY latest."order" DESC, latest.generation_id DESC, latest.id DESC LIMIT 1)"""
+    if method_id is None:
+        return latest("")
+    return f"COALESCE({latest(f' AND available.pokemon_move_method_id = {int(method_id)}')}, {latest('')})"
 
 
 def _bounded_integer(name: str, value: Any, minimum: int, maximum: int | None = None) -> None:
@@ -190,8 +198,9 @@ def _movepool_filters(
     conn: sqlite3.Connection, move_type: str | None, damage_class: str | None,
     min_power: int | None, max_power: int | None, learning_method: str | None,
     min_level: int | None, max_level: int | None,
-) -> tuple[str, list[Any]]:
-    clauses, params = [], []
+) -> tuple[str, list[Any], int | None]:
+    """Clause, paramètres et identifiant de la méthode demandée ou impliquée par des niveaux."""
+    clauses, params, method_id = [], [], None
     for name, value in (("min_power", min_power), ("max_power", max_power),
                         ("min_level", min_level), ("max_level", max_level)):
         _bounded_integer(name, value, 0)
@@ -223,9 +232,10 @@ def _movepool_filters(
         method = conn.execute("SELECT id FROM pokemon_move_methods WHERE identifier=?", (learning_method,)).fetchone()
         if method is None:
             raise ValueError(f"Méthode inconnue : {learning_method!r}")
+        method_id = method["id"]
         clauses.append("pm.pokemon_move_method_id=?")
-        params.append(method["id"])
-    return " AND ".join(clauses) or "1", params
+        params.append(method_id)
+    return " AND ".join(clauses) or "1", params, method_id
 
 
 def get_pokemon_moves(
@@ -252,10 +262,11 @@ def get_pokemon_moves(
             raise ValueError("Forme ambiguë : précisez une seule forme du Pokémon.")
         pokemon_id = pokemon_ids.pop()
         version_id = _resolve_version_id(conn, version_group)
-        where, filter_params = _movepool_filters(conn, move_type, damage_class, min_power,
-                                               max_power, learning_method, min_level, max_level)
+        where, filter_params, method_id = _movepool_filters(conn, move_type, damage_class, min_power,
+                                                          max_power, learning_method, min_level, max_level)
         if version_id is None:
-            version_id = conn.execute(f"SELECT {_latest_movepool_sql('?')}", (pokemon_id,)).fetchone()[0]
+            latest_sql = _latest_movepool_sql("?", method_id)
+            version_id = conn.execute(f"SELECT {latest_sql}", [pokemon_id] * latest_sql.count("?")).fetchone()[0]
         selected = conn.execute("SELECT identifier FROM version_groups WHERE id=?", (version_id,)).fetchone()
         context = {"operation": "get_pokemon_moves", "pokemon": species["name_fr"],
                    "pokemon_id": pokemon_id, "form": form,
@@ -366,12 +377,12 @@ def search_pokemon(
                                "CASE WHEN cp.type_2_fr IS NULL THEN 0 ELSE 1 END)=?")
                 params.append(len(resolved))
         version_id = _resolve_version_id(conn, version_group)
-        move_where, move_params = _movepool_filters(conn, move_type, damage_class, min_power,
+        move_where, move_params, method_id = _movepool_filters(conn, move_type, damage_class, min_power,
                                                   max_power, learning_method, min_level, max_level)
         has_movepool_filter = any(value is not None for value in (
             version_group, move_type, damage_class, min_power, max_power, learning_method, min_level, max_level))
         if has_movepool_filter:
-            version_sql = "?" if version_id is not None else _latest_movepool_sql("p.id")
+            version_sql = "?" if version_id is not None else _latest_movepool_sql("p.id", method_id)
             clauses.append(f"""EXISTS (SELECT 1 FROM pokemon_moves pm JOIN moves m ON m.id=pm.move_id
                 WHERE pm.pokemon_id=p.id AND pm.version_group_id={version_sql} AND {move_where})""")
             if version_id is not None:
@@ -397,7 +408,7 @@ def search_pokemon(
         total = conn.execute(f"SELECT COUNT(*) {source}", params).fetchone()[0]
         if best_only:
             ranking.update(tie=total > 1, tie_count=total)
-        version_projection = ("?" if version_id is not None else _latest_movepool_sql("p.id")) if has_movepool_filter else "NULL"
+        version_projection = ("?" if version_id is not None else _latest_movepool_sql("p.id", method_id)) if has_movepool_filter else "NULL"
         select_params = ([version_id] if has_movepool_filter and version_id is not None else [])
         stat_projection = f", {stat_expression} AS base_stat_value" if stat_expression else ""
         if sort_by == "speed":

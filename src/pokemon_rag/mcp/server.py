@@ -69,7 +69,8 @@ def pokemon_search(
     learning_method et niveaux sélectionnent les Pokémon pouvant apprendre
     au moins une capacité respectant TOUS ces filtres. Les bornes sont inclusives.
     Sans version_group, utilise le dernier movepool disponible de chaque Pokémon,
-    jamais l'union historique. Les propriétés des capacités ne sont pas historisées.
+    jamais l'union historique ; avec learning_method ou des niveaux, le dernier jeu
+    où ce Pokémon a cette méthode. Les propriétés des capacités ne sont pas historisées.
     limit : 0 à 100 (0 pour compter), offset : pagination. total_count est exact,
     truncated signale une liste partielle. Aucun filtre talent n'est disponible.
     Retourne des Pokémon, pas les noms des capacités qui justifient la sélection.
@@ -111,7 +112,9 @@ def pokemon_moves(
     learning_method : level-up/machine/egg/tutor ou autre identifiant de la base.
     min_level/max_level inclusifs impliquent level-up, incompatibles avec les autres méthodes.
     version_group explicite est strict ; sinon dernier jeu réellement disponible
-    pour cette forme, indiqué dans le résultat, avant application des filtres.
+    pour cette forme, indiqué dans le résultat, avant les filtres de type, catégorie
+    et puissance. Avec learning_method ou des niveaux : dernier jeu où cette forme
+    a cette méthode, le jeu le plus récent pouvant ne proposer que la sienne.
     Propriétés actuelles des capacités, sans reconstruction de leurs anciennes valeurs.
     Les méthodes retenues figurent dans learning sans répéter les capacités.
     total_count>0 répond oui à une question « peut-il apprendre une capacité… ? » ;

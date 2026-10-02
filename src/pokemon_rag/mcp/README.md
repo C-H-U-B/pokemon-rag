@@ -8,7 +8,8 @@ et contrats sont décrits dans le [guide structuré](../structured/README.md#rec
 Ils combinent les filtres en SQL, renvoient des pages avec total exact et
 troncature explicite, et utilisent une forme par défaut sans forme demandée.
 La recherche inverse par capacité utilise le dernier movepool de chaque Pokémon,
-sans union historique. Le catalogue personnalisé lié présente des lacunes de
+sans union historique. Avec une méthode d'apprentissage ou des niveaux et sans
+jeu précisé, les deux outils retiennent le dernier jeu où le Pokémon a cette méthode. Le catalogue personnalisé lié présente des lacunes de
 formes par défaut signalées dans `catalogue_complete` ; les talents sont reportés.
 Les outils historiques conservent leurs signatures et leurs résultats.
 `pokemon_search` classe aussi les six statistiques de base et leur somme SQL :
@@ -112,7 +113,8 @@ conformité complète au schéma. `reconcile_tool_call` utilise les
 [extracteurs communs](../constraints/README.md) pour rétablir les formes, jeux et
 bornes reconnus. Une mention de niveau peut réorienter vers `pokemon_level_up_moves`.
 Pour `pokemon_moves` et `pokemon_search`, la réconciliation conserve l'outil et
-les filtres de capacités, restaure les bornes et exige `level-up`.
+les filtres de capacités, restaure les bornes et exige `level-up`. Comme le
+guard ADK, elle retire un `learning_method` que la question ne nomme pas.
 `pokemon_search` ne nécessite pas de Pokémon individuel dans la question.
 Pour un numéro national explicite reconnu, le client rétablit `pokedex_number`
 et redirige un choix de `pokemon_pokedex_identity` vers `pokemon_search`, en
